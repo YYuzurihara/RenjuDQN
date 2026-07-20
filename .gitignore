@@ -4,6 +4,7 @@ Thumbs.db
 /data.csv
 /data.shards
 /mcts
+/Plan.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

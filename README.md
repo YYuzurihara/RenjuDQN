@@ -2,6 +2,8 @@
 
 PyTorch + Hydra + MLflow + uv で構成した、五目並べの「次の1手」予測用 TransformerEncoder プロジェクトです。
 
+> 元リポジトリ: https://github.com/shuichi/RenjuTransformer.git
+
 ## セットアップ
 
 ```powershell

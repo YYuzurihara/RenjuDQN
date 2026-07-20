@@ -494,7 +494,6 @@ int choose_weighted_top_move(const Board& board, int player, const std::vector<i
 struct MCTSNode {
     Board board {};
     int player_to_move = BLACK;
-    int root_player = BLACK;
     int candidate_limit = DEFAULT_CANDIDATE_LIMIT;
     int move_played = -1;
     MCTSNode* parent = nullptr;
@@ -507,7 +506,6 @@ struct MCTSNode {
     MCTSNode(
         const Board& board_value,
         int player_value,
-        int root_player_value,
         int candidate_limit_value,
         int move_played_value = -1,
         MCTSNode* parent_value = nullptr,
@@ -515,7 +513,6 @@ struct MCTSNode {
     )
         : board(board_value),
           player_to_move(player_value),
-          root_player(root_player_value),
           candidate_limit(candidate_limit_value),
           move_played(move_played_value),
           parent(parent_value),
@@ -580,7 +577,6 @@ struct MCTSNode {
         children.push_back(std::make_unique<MCTSNode>(
             next_board,
             other_player(player_to_move),
-            root_player,
             candidate_limit,
             move,
             this,
@@ -593,7 +589,11 @@ struct MCTSNode {
         ++visits;
         if (winner == DRAW) {
             wins += 0.5;
-        } else if (winner == root_player) {
+        } else if (winner == other_player(player_to_move)) {
+            // wins is scored from the perspective of whoever moved into this
+            // node (i.e. the player who chose it at the parent), so that
+            // best_child() picks the branch that's good for the mover at
+            // each level, not always for the root player.
             wins += 1.0;
         }
     }
@@ -637,7 +637,7 @@ int run_mcts(const Board& board, int player, const Options& options, const std::
         return root_moves.front();
     }
 
-    MCTSNode root(board, player, player, options.candidate_limit);
+    MCTSNode root(board, player, options.candidate_limit);
     root.untried_moves = root_moves;
 
     for (int simulation = 0; simulation < options.simulations; ++simulation) {

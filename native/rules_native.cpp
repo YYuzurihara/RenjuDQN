@@ -233,25 +233,47 @@ std::optional<int> board_winner(const Board& board) {
 
 PYBIND11_MODULE(_rules_native, m) {
     m.doc() = "Native implementation of renju_dqn.rules hot paths.";
-    m.def("legal_move_mask", &legal_move_mask, py::arg("board"));
+    // call_guard<gil_scoped_release> lets these run concurrently with other Python threads
+    // (e.g. a training thread's GPU work) instead of serializing on the GIL. Argument/return
+    // marshalling to/from the Python board list still happens under the GIL either side of it.
     m.def(
-        "winner_after_move", &winner_after_move, py::arg("board"), py::arg("index"), py::arg("player")
+        "legal_move_mask", &legal_move_mask, py::arg("board"), py::call_guard<py::gil_scoped_release>()
     );
-    m.def("board_winner", &board_winner, py::arg("board"));
-    m.def("is_forbidden_for_black", &is_forbidden_for_black, py::arg("board"), py::arg("index"));
-    m.def("infer_player", &infer_player, py::arg("board"));
+    m.def(
+        "winner_after_move",
+        &winner_after_move,
+        py::arg("board"),
+        py::arg("index"),
+        py::arg("player"),
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "board_winner", &board_winner, py::arg("board"), py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "is_forbidden_for_black",
+        &is_forbidden_for_black,
+        py::arg("board"),
+        py::arg("index"),
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "infer_player", &infer_player, py::arg("board"), py::call_guard<py::gil_scoped_release>()
+    );
     m.def(
         "count_four_directions",
         &count_four_directions,
         py::arg("board"),
         py::arg("move"),
-        py::arg("player")
+        py::arg("player"),
+        py::call_guard<py::gil_scoped_release>()
     );
     m.def(
         "count_open_three_directions",
         &count_open_three_directions,
         py::arg("board"),
         py::arg("move"),
-        py::arg("player")
+        py::arg("player"),
+        py::call_guard<py::gil_scoped_release>()
     );
 }

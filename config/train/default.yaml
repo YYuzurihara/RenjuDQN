@@ -13,8 +13,12 @@ log_every_steps: 20
 gamma: 0.99
 replay_buffer_capacity: 1000000 #1M
 target_update_interval: 200 # gradient steps between hard target-network syncs
-steps_per_epoch: 300 # self-play games per epoch
-updates_per_game: 4 # gradient updates after each self-play game
+steps_per_epoch: 300 # epoch size in units of "self-play games worth" of gradient steps
+updates_per_game: 4 # steps_per_epoch * updates_per_game = gradient steps per epoch
+# Self-play (actor thread) and replay_buffer.sample() (prefetch threads) run independently of
+# the learner loop, each on their own thread(s), so training isn't blocked alternating between
+# self-play, batch prep, and the GPU step.
+prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
 epsilon_start: 1.0
 epsilon_end: 0.1
 # epsilon is annealed by curriculum progress rather than a step count (see

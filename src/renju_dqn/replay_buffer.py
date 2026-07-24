@@ -5,10 +5,16 @@ Stores raw `(board, player, move, winner, prev_move, next_board, done)` transiti
 pre-encoded tensors: a board is 225 small ints, so keeping the buffer at
 capacity in raw form is cheap, and it lets sampling apply a fresh random D4
 augmentation each time instead of baking one in at insert time.
+
+Thread-safe for one self-play (actor) thread pushing concurrently with one training
+(learner) thread sampling: `push` and index selection in `sample` hold a lock, but the
+(slow) tensor encoding/augmentation in `sample` runs on a private snapshot after releasing
+it, so the actor isn't blocked for the duration of a batch's encoding.
 """
 
 from __future__ import annotations
 
+import threading
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -62,6 +68,7 @@ class ReplayBuffer:
         self._write_index = 0  # next slot to overwrite once the buffer is full (FIFO)
         # steps_to_end -> slot indices at that distance from their game's terminal ply.
         self._distance_buckets: dict[int, set[int]] = defaultdict(set)
+        self._lock = threading.Lock()
 
     def __len__(self) -> int:
         return len(self._transitions)
@@ -87,17 +94,18 @@ class ReplayBuffer:
             done=done,
             steps_to_end=steps_to_end,
         )
-        if len(self._transitions) < self.capacity:
-            index = len(self._transitions)
-            self._transitions.append(transition)
-        else:
-            index = self._write_index
-            old = self._transitions[index]
-            self._distance_buckets[old.steps_to_end].discard(index)
-            self._transitions[index] = transition
-            self._write_index = (self._write_index + 1) % self.capacity
+        with self._lock:
+            if len(self._transitions) < self.capacity:
+                index = len(self._transitions)
+                self._transitions.append(transition)
+            else:
+                index = self._write_index
+                old = self._transitions[index]
+                self._distance_buckets[old.steps_to_end].discard(index)
+                self._transitions[index] = transition
+                self._write_index = (self._write_index + 1) % self.capacity
 
-        self._distance_buckets[steps_to_end].add(index)
+            self._distance_buckets[steps_to_end].add(index)
 
     def push_game(self, rows: list[GameRow], winner: int) -> None:
         """Push one finished self-play game's `(board, player, move)` rows, in ply order."""
@@ -191,30 +199,36 @@ class ReplayBuffer:
         plies of their game's terminal state (curriculum learning: 1 covers only the
         terminal ply, 2 covers the terminal ply and the one before it, and so on).
         """
-        if max_steps_from_end is not None:
-            pool: list[int] = []
-            for distance in range(max_steps_from_end):
-                pool.extend(self._distance_buckets.get(distance, ()))
-            if len(pool) < batch_size:
+        with self._lock:
+            if max_steps_from_end is not None:
+                pool: list[int] = []
+                for distance in range(max_steps_from_end):
+                    pool.extend(self._distance_buckets.get(distance, ()))
+                if len(pool) < batch_size:
+                    raise ValueError(
+                        f"Not enough transitions within {max_steps_from_end} step(s) of the end "
+                        f"to sample: have {len(pool)}, need {batch_size}."
+                    )
+                if generator is not None:
+                    choice = torch.randperm(len(pool), generator=generator)[:batch_size]
+                else:
+                    choice = torch.randperm(len(pool))[:batch_size]
+                indices = torch.tensor([pool[i] for i in choice.tolist()], dtype=torch.long)
+            elif len(self._transitions) < batch_size:
                 raise ValueError(
-                    f"Not enough transitions within {max_steps_from_end} step(s) of the end to "
-                    f"sample: have {len(pool)}, need {batch_size}."
+                    f"Not enough transitions to sample: have {len(self._transitions)}, need "
+                    f"{batch_size}."
                 )
-            if generator is not None:
-                choice = torch.randperm(len(pool), generator=generator)[:batch_size]
+            elif generator is not None:
+                indices = torch.randperm(len(self._transitions), generator=generator)[:batch_size]
             else:
-                choice = torch.randperm(len(pool))[:batch_size]
-            indices = torch.tensor([pool[i] for i in choice.tolist()], dtype=torch.long)
-        elif len(self._transitions) < batch_size:
-            raise ValueError(
-                f"Not enough transitions to sample: have {len(self._transitions)}, need {batch_size}."
-            )
-        elif generator is not None:
-            indices = torch.randperm(len(self._transitions), generator=generator)[:batch_size]
-        else:
-            indices = torch.randperm(len(self._transitions))[:batch_size]
+                indices = torch.randperm(len(self._transitions))[:batch_size]
 
-        transitions = [self._transitions[index] for index in indices.tolist()]
+            # Snapshot references under the lock; _Transition objects are replaced wholesale on
+            # push (never mutated in place), so encoding them lock-free afterward is safe and
+            # keeps the actor thread from blocking for the whole (much slower) encode+augment step.
+            transitions = [self._transitions[index] for index in indices.tolist()]
+
         state, action, reward, next_state, done, next_legal_mask = self._encode_batch(transitions)
 
         # Each sample gets its own random D4 symmetry (as before), but samples sharing a

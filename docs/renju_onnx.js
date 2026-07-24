@@ -1,12 +1,10 @@
 export const DEFAULT_METADATA = Object.freeze({
-  input_name: "input_ids",
-  output_name: "logits",
-  input_dtype: "int64",
+  input_name: "state",
+  output_name: "q_values",
+  input_dtype: "float32",
   board_size: 15,
   board_cells: 225,
-  input_length: 226,
-  sep_token_id: 228,
-  move_id_offset: 3,
+  in_channels: 4,
   num_move_labels: 225,
   supports_batch: false,
 });
@@ -66,17 +64,28 @@ export function validateBoard(board, metadata = DEFAULT_METADATA) {
   }
 }
 
-export function encodeInput(board, metadata = DEFAULT_METADATA) {
+// Mirrors src/renju_dqn/board_encoder.py::encode_board -- channel order (own stones /
+// opponent stones / last move / side-to-move constant) must match the trained model.
+export function encodeBoardTensor(board, player, lastMoveIndex, metadata = DEFAULT_METADATA) {
   validateBoard(board, metadata);
-  const tokens = [...board, metadata.sep_token_id];
-  if (tokens.length !== metadata.input_length) {
-    throw new Error(`Expected encoded input length ${metadata.input_length}, got ${tokens.length}.`);
-  }
-  return tokens;
-}
+  const cells = metadata.board_cells;
+  const opponent = player === BLACK ? WHITE : BLACK;
+  const data = new Float32Array(metadata.in_channels * cells);
+  const ownOffset = 0;
+  const opponentOffset = cells;
+  const lastMoveOffset = 2 * cells;
+  const sideOffset = 3 * cells;
+  const sideValue = player === BLACK ? 1 : 0;
 
-function toBigInt64Array(values) {
-  return new BigInt64Array(values.map((value) => BigInt(value)));
+  for (let index = 0; index < cells; index += 1) {
+    data[ownOffset + index] = board[index] === player ? 1 : 0;
+    data[opponentOffset + index] = board[index] === opponent ? 1 : 0;
+    data[sideOffset + index] = sideValue;
+  }
+  if (lastMoveIndex !== null && lastMoveIndex !== undefined) {
+    data[lastMoveOffset + lastMoveIndex] = 1;
+  }
+  return data;
 }
 
 function idxToRowCol(index, boardSize) {
@@ -291,7 +300,7 @@ export function boardIsFull(board, metadata = DEFAULT_METADATA) {
   return board.every((cell) => cell !== EMPTY);
 }
 
-// Mirrors src/renju_transformer/reward.py — keep the two in sync.
+// Mirrors src/renju_dqn/reward.py — keep the two in sync.
 export const DRAW = 0;
 export const FOUR_WEIGHT = 9;
 export const OPEN_THREE_WEIGHT = 3;
@@ -364,85 +373,82 @@ export function playerLabel(player) {
 
 export {BLACK, EMPTY, WHITE};
 
-function softmax(values) {
-  const maxValue = Math.max(...values);
-  if (!Number.isFinite(maxValue)) {
-    throw new Error("No finite logits available after masking.");
-  }
-  const exps = values.map((value) => Math.exp(value - maxValue));
-  const total = exps.reduce((sum, value) => sum + value, 0);
-  return exps.map((value) => value / total);
-}
-
-function topK(probabilities, k) {
-  return probabilities
-    .map((probability, index) => ({index, probability}))
-    .sort((left, right) => right.probability - left.probability)
+function topK(values, k) {
+  return values
+    .map((value, index) => ({index, value}))
+    .sort((left, right) => right.value - left.value)
     .slice(0, k);
 }
 
-export function indexToMoveId(index, metadata = DEFAULT_METADATA) {
-  return index + metadata.move_id_offset;
-}
-
-export async function predictBoard(session, board, metadata = DEFAULT_METADATA, options = {}) {
+export async function predictBoard(
+  session,
+  board,
+  player,
+  lastMoveIndex,
+  metadata = DEFAULT_METADATA,
+  options = {},
+) {
   const ort = getOrtRuntime();
   const resolvedMetadata = {...DEFAULT_METADATA, ...metadata};
   validateBoard(board, resolvedMetadata);
 
-  const tokens = encodeInput(board, resolvedMetadata);
-  const inputTensor = new ort.Tensor(
-    resolvedMetadata.input_dtype,
-    toBigInt64Array(tokens),
-    [1, resolvedMetadata.input_length],
-  );
+  const tensorData = encodeBoardTensor(board, player, lastMoveIndex, resolvedMetadata);
+  const inputTensor = new ort.Tensor(resolvedMetadata.input_dtype, tensorData, [
+    1,
+    resolvedMetadata.in_channels,
+    resolvedMetadata.board_size,
+    resolvedMetadata.board_size,
+  ]);
   const inputName = resolvedMetadata.input_name ?? session.inputNames[0];
   const outputName = resolvedMetadata.output_name ?? session.outputNames[0];
   const outputs = await session.run({[inputName]: inputTensor});
-  const logitsTensor = outputs[outputName];
-  if (!logitsTensor) {
+  const qValuesTensor = outputs[outputName];
+  if (!qValuesTensor) {
     throw new Error(`Model output "${outputName}" was not found.`);
   }
 
-  const logits = Array.from(logitsTensor.data, (value) => Number(value));
+  const qValues = Array.from(qValuesTensor.data, (value) => Number(value));
   const applyLegalMask = options.applyLegalMask ?? true;
-  const maskedLogits = logits.slice();
+  const maskedQValues = qValues.slice();
   let mask = null;
   if (applyLegalMask) {
     mask = legalMoveMask(board, resolvedMetadata);
     if (!mask.some(Boolean)) {
       throw new Error("No legal moves available for the provided board.");
     }
-    for (let index = 0; index < maskedLogits.length; index += 1) {
+    for (let index = 0; index < maskedQValues.length; index += 1) {
       if (!mask[index]) {
-        maskedLogits[index] = Number.NEGATIVE_INFINITY;
+        maskedQValues[index] = Number.NEGATIVE_INFINITY;
       }
     }
   }
 
-  const probabilities = softmax(maskedLogits);
-  const topKCount = Math.min(options.topK ?? 5, probabilities.length);
-  const ranked = topK(probabilities, topKCount).map((item, rank) => ({
+  const topKCount = Math.min(options.topK ?? 5, maskedQValues.length);
+  const ranked = topK(maskedQValues, topKCount).map((item, rank) => ({
     rank: rank + 1,
     index: item.index,
-    moveId: indexToMoveId(item.index, resolvedMetadata),
-    probability: item.probability,
+    qValue: item.value,
   }));
 
   return {
-    inputIds: tokens,
-    logits,
-    maskedLogits,
+    qValues,
+    maskedQValues,
     legalMask: mask,
     predictedIndex: ranked[0].index,
-    predictedMoveId: ranked[0].moveId,
-    predictedProbability: ranked[0].probability,
+    predictedQValue: ranked[0].qValue,
     topK: ranked,
   };
 }
 
-export async function predictBoardCsv(session, boardCsv, metadata = DEFAULT_METADATA, options = {}) {
-  return predictBoard(session, parseBoardCsv(boardCsv), metadata, options);
+export async function predictBoardCsv(
+  session,
+  boardCsv,
+  player,
+  lastMoveIndex,
+  metadata = DEFAULT_METADATA,
+  options = {},
+) {
+  return predictBoard(session, parseBoardCsv(boardCsv), player, lastMoveIndex, metadata, options);
 }
 
 export async function loadModel(modelUrl, metadataUrl, sessionOptions = {}) {

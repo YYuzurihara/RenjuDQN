@@ -1,0 +1,12 @@
+{
+  "model_type": "RenjuResNetDQN",
+  "input_name": "state",
+  "output_name": "q_values",
+  "input_dtype": "float32",
+  "output_dtype": "float32",
+  "board_size": 15,
+  "board_cells": 225,
+  "in_channels": 4,
+  "num_move_labels": 225,
+  "supports_batch": false
+}

@@ -94,8 +94,30 @@ kill $(cat mcts.pid)              # 途中で止めたい場合
 
 ## 推論
 
-`renju_dqn.predict` が実装され次第、学習済み checkpoint と盤面から Q 値上位の着手を出力できるようになります。
-現時点では `uv run python ./renju-dqn.py mode=predict ...` は `NotImplementedError` です。
+学習済み checkpoint と盤面 CSV（225 個の 0/1/2、盤面から手番を自動判定）から、合法手マスク適用後の
+Q 値上位の着手を出力します。
+
+```bash
+uv run python ./renju-dqn.py mode=predict \
+  predict.checkpoint_path=artifacts/checkpoints/best_model.pt \
+  predict.board_csv='0,0,0,...(225個)' \
+  predict.top_k=5
+```
+
+`predict.board_path` でファイルから読み込むことも、`predict.epsilon` を指定して評価用に
+ε-greedy で着手を選ぶこともできます。
+
+## 評価
+
+同じ checkpoint から、TD 誤差 / 平均 Q 値（`data.path` のログを使用）と、ランダム方策を
+基準としたセルフプレイ勝率（`predict.eval_opponent_epsilon=1.0` が既定）を計測します。
+
+```bash
+uv run python ./renju-dqn.py mode=evaluate \
+  predict.checkpoint_path=artifacts/checkpoints/best_model.pt \
+  predict.num_eval_batches=20 \
+  predict.num_eval_games=20
+```
 
 ## MLflow
 

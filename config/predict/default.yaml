@@ -3,3 +3,9 @@ board_csv: ""
 board_path: null
 top_k: 5
 apply_legal_mask: true
+epsilon: 0.0 # >0 picks a random legal move with this probability instead of argmax
+
+# mode=evaluate only
+num_eval_batches: 20 # TD-loss/mean-Q batches sampled from data.path
+num_eval_games: 20 # self-play games against the baseline opponent
+eval_opponent_epsilon: 1.0 # 1.0 = fully random baseline opponent

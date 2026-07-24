@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-r"""Export a trained RenjuTransformer checkpoint to ONNX plus browser metadata.
+r"""Export a trained RenjuResNetDQN checkpoint to ONNX plus browser metadata.
 
 Usage:
-    uv run python .\scripts\export_onnx.py ^
-        --checkpoint artifacts/checkpoints/best_model.pt ^
-        --output docs/renju_transformer.onnx
+    uv run python ./scripts/export_onnx.py \
+        --checkpoint artifacts/checkpoints/best_model.pt \
+        --output docs/renju_dqn.onnx
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from renju_transformer.model import RenjuTransformerModel
+from renju_dqn.model import RenjuResNetDQN
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,23 +42,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_model_from_checkpoint(checkpoint: dict) -> tuple[RenjuTransformerModel, dict]:
+def build_model_from_checkpoint(checkpoint: dict) -> tuple[RenjuResNetDQN, dict]:
     checkpoint_config = checkpoint.get("config")
     if checkpoint_config is None:
         raise ValueError("Checkpoint does not contain embedded config data.")
 
     model_cfg = checkpoint_config["model"]
-    model = RenjuTransformerModel(
-        vocab_size=model_cfg["token_vocab_size"],
-        max_seq_len=model_cfg["max_seq_len"],
-        d_model=model_cfg["d_model"],
-        nhead=model_cfg["nhead"],
-        num_layers=model_cfg["num_layers"],
-        dim_feedforward=model_cfg["dim_feedforward"],
-        dropout=model_cfg["dropout"],
-        activation=model_cfg["activation"],
-        norm_first=model_cfg["norm_first"],
+    model = RenjuResNetDQN(
+        in_channels=model_cfg["in_channels"],
+        channels=model_cfg["channels"],
+        num_blocks=model_cfg["num_blocks"],
+        head_channels=model_cfg["head_channels"],
         num_move_labels=model_cfg["num_move_labels"],
+        dueling=model_cfg["dueling"],
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
@@ -66,33 +62,28 @@ def build_model_from_checkpoint(checkpoint: dict) -> tuple[RenjuTransformerModel
 
 
 def build_sample_input(checkpoint_config: dict) -> torch.Tensor:
-    data_cfg = checkpoint_config.get("data", {})
     model_cfg = checkpoint_config["model"]
-    seq_len = int(model_cfg["max_seq_len"])
-    sep_token_id = int(data_cfg.get("sep_token_id", 228))
-
-    sample = torch.zeros((1, seq_len), dtype=torch.long)
-    sample[0, -1] = sep_token_id
-    return sample
+    data_cfg = checkpoint_config.get("data", {})
+    in_channels = int(model_cfg["in_channels"])
+    board_size = int(data_cfg.get("board_size", 15))
+    return torch.zeros((1, in_channels, board_size, board_size), dtype=torch.float32)
 
 
 def build_metadata(checkpoint_config: dict) -> dict:
-    data_cfg = checkpoint_config.get("data", {})
     model_cfg = checkpoint_config["model"]
+    data_cfg = checkpoint_config.get("data", {})
     board_size = int(data_cfg.get("board_size", 15))
     board_cells = board_size * board_size
 
     return {
-        "model_type": "RenjuTransformerModel",
-        "input_name": "input_ids",
-        "output_name": "logits",
-        "input_dtype": "int64",
+        "model_type": "RenjuResNetDQN",
+        "input_name": "state",
+        "output_name": "q_values",
+        "input_dtype": "float32",
         "output_dtype": "float32",
         "board_size": board_size,
         "board_cells": board_cells,
-        "input_length": int(model_cfg["max_seq_len"]),
-        "sep_token_id": int(data_cfg.get("sep_token_id", 228)),
-        "move_id_offset": int(data_cfg.get("move_id_offset", 3)),
+        "in_channels": int(model_cfg["in_channels"]),
         "num_move_labels": int(model_cfg["num_move_labels"]),
         "supports_batch": False,
     }
@@ -127,7 +118,7 @@ def main() -> None:
             f"Install `{missing}` and retry. "
             "For this project, run either "
             "`uv add onnx onnxscript` to add them permanently, or "
-            "`uv run --with onnx --with onnxscript python .\\scripts\\export_onnx.py ...` "
+            "`uv run --with onnx --with onnxscript python ./scripts/export_onnx.py ...` "
             "to use an isolated ephemeral environment."
         ) from exc
 
@@ -136,8 +127,8 @@ def main() -> None:
         model,
         (sample_input,),
         opset_version=args.opset,
-        input_names=["input_ids"],
-        output_names=["logits"],
+        input_names=["state"],
+        output_names=["q_values"],
         dynamo=True,
         external_data=False,
         dynamic_shapes=None,

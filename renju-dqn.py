@@ -24,9 +24,15 @@ def main(cfg: DictConfig) -> None:
         train_model(cfg)
         return
     if cfg.mode == "predict":
-        raise NotImplementedError(
-            "renju_dqn.predict is not implemented yet (Plan.md phase 5: inference/evaluation)."
-        )
+        from renju_dqn.predict import predict_from_checkpoint
+
+        predict_from_checkpoint(cfg)
+        return
+    if cfg.mode == "evaluate":
+        from renju_dqn.evaluate import evaluate_checkpoint
+
+        evaluate_checkpoint(cfg)
+        return
     raise ValueError(f"Unsupported mode: {cfg.mode}")
 
 

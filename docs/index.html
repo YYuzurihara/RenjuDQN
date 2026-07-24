@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Renju Transformer ONNX デモ</title>
+    <title>Renju DQN ONNX デモ</title>
     <style>
       :root {
         color-scheme: light;
@@ -341,9 +341,9 @@
     <main class="grid">
       <header class="page-header">
         <div class="page-header-copy">
-          <h1 data-i18n="title">Renju Transformer ONNX デモ</h1>
+          <h1 data-i18n="title">Renju DQN ONNX デモ</h1>
           <p class="muted" data-i18n-html="introHtml">
-            同じディレクトリにある <code>renju_transformer.onnx</code> と metadata JSON を読み込み、
+            同じディレクトリにある <code>renju_dqn.onnx</code> と metadata JSON を読み込み、
             ブラウザ上で次の一手を推論します。
           </p>
         </div>
@@ -392,11 +392,11 @@
       <section class="grid two">
         <div class="field">
           <label for="model-url" data-i18n="modelUrlLabel">モデル URL</label>
-          <input id="model-url" value="./renju_transformer.onnx" />
+          <input id="model-url" value="./renju_dqn.onnx" />
         </div>
         <div class="field">
           <label for="metadata-url" data-i18n="metadataUrlLabel">metadata URL</label>
-          <input id="metadata-url" value="./renju_transformer.onnx.metadata.json" />
+          <input id="metadata-url" value="./renju_dqn.onnx.metadata.json" />
         </div>
       </section>
 
@@ -439,6 +439,7 @@
         boardIsFull,
         boardWinner,
         computeReward,
+        inferPlayer,
         legalMoveMask,
         loadModel,
         parseBoardCsv,
@@ -447,8 +448,8 @@
       } from "./renju_onnx.js";
 
       const ORT_VERSION = "1.23.2";
-      // Matches the demo default used while tuning src/renju_transformer/reward.py;
-      // once train config wires up a real gamma (フェーズ6), read it from there instead.
+      // Matches config/train/default.yaml's gamma; this static page has no build step
+      // to read the Hydra config, so keep the two values in sync by hand.
       const DEFAULT_GAMMA = 0.99;
       setOrtRuntime(globalThis.ort);
       ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
@@ -486,8 +487,7 @@
           aiIdle: "AI: まだ着手していません",
           aiMoveButton: "AI に着手させる",
           aiMoveFailed: "AI 着手失敗",
-          aiMoved: ({coord, moveId, probability}) =>
-            `AI: ${coord} に着手 (top1=${moveId}, prob=${probability})`,
+          aiMoved: ({coord, index, qValue}) => `AI: ${coord} に着手 (top1=${index}, q=${qValue})`,
           aiSyncedFromTextarea: "AI: textarea から盤面を反映",
           aiThinking: "AI が考えています...",
           aiTurn: "AI の手番",
@@ -504,26 +504,26 @@
           fillEmptyButton: "空盤面を入れる",
           gameStatus: ({message}) => `状態: ${message}`,
           illegalMove: ({coord}) => `そこには打てません: ${coord}`,
-          inferenceComplete: ({moveId}) => `推論完了: predicted_move_id=${moveId}`,
+          inferenceComplete: ({index}) => `推論完了: predicted_index=${index}`,
           inferenceFailed: ({message}) => `推論失敗: ${message}`,
           introHtml:
-            '同じディレクトリにある <code>renju_transformer.onnx</code> と metadata JSON を読み込み、ブラウザ上で次の一手を推論します。',
+            '同じディレクトリにある <code>renju_dqn.onnx</code> と metadata JSON を読み込み、ブラウザ上で次の一手を推論します。',
           languageName: "日本語",
           languageShortName: "JA",
           languageToggleLabel: ({language}) => `${language}へ切り替え`,
           loadFailed: ({message}) => `読み込み失敗: ${message}`,
           loadModelButton: "モデルを読み込む",
           metadataUrlLabel: "metadata URL",
-          modelLoaded: ({boardSize, inputLength}) =>
-            `モデル読み込み完了: ${boardSize}x${boardSize}, input_length=${inputLength}`,
+          modelLoaded: ({boardSize, inChannels}) =>
+            `モデル読み込み完了: ${boardSize}x${boardSize}, in_channels=${inChannels}`,
           modelLoading: "モデルを読み込み中...",
           modelUnloaded: "モデル未ロード",
           modelUrlLabel: "モデル URL",
           moveLogEmpty: "まだ手がありません。",
-          moveLogEntry: ({moveNumber, playerLabel, coord, probability, reward}) => {
+          moveLogEntry: ({moveNumber, playerLabel, coord, qValue, reward}) => {
             let text = `${moveNumber}. ${playerLabel} ${coord}`;
-            if (probability != null) {
-              text += ` prob=${probability}`;
+            if (qValue != null) {
+              text += ` q=${qValue}`;
             }
             if (reward != null) {
               text += ` reward=${reward}`;
@@ -546,7 +546,7 @@
             `報酬: ${playerLabel} ${coord} → ${reward}`,
           runPredictButton: "推論する",
           statusAiMoveFailed: ({message}) => `AI 着手失敗: ${message}`,
-          title: "Renju Transformer ONNX デモ",
+          title: "Renju DQN ONNX デモ",
           turnCurrent: ({playerLabel, actorLabel}) => `手番: ${playerLabel}(${actorLabel})`,
           turnGameOver: "手番: 対局終了",
           white: "白",
@@ -561,8 +561,7 @@
           aiIdle: "AI: no move yet",
           aiMoveButton: "Let AI move",
           aiMoveFailed: "AI move failed",
-          aiMoved: ({coord, moveId, probability}) =>
-            `AI: moved at ${coord} (top1=${moveId}, prob=${probability})`,
+          aiMoved: ({coord, index, qValue}) => `AI: moved at ${coord} (top1=${index}, q=${qValue})`,
           aiSyncedFromTextarea: "AI: synced board from textarea",
           aiThinking: "AI is thinking...",
           aiTurn: "AI's turn",
@@ -579,26 +578,26 @@
           fillEmptyButton: "Fill empty board",
           gameStatus: ({message}) => `Status: ${message}`,
           illegalMove: ({coord}) => `Illegal move: ${coord}`,
-          inferenceComplete: ({moveId}) => `Inference complete: predicted_move_id=${moveId}`,
+          inferenceComplete: ({index}) => `Inference complete: predicted_index=${index}`,
           inferenceFailed: ({message}) => `Inference failed: ${message}`,
           introHtml:
-            'Loads <code>renju_transformer.onnx</code> and the metadata JSON from this directory, then predicts the next move in your browser.',
+            'Loads <code>renju_dqn.onnx</code> and the metadata JSON from this directory, then predicts the next move in your browser.',
           languageName: "English",
           languageShortName: "EN",
           languageToggleLabel: ({language}) => `Switch to ${language}`,
           loadFailed: ({message}) => `Load failed: ${message}`,
           loadModelButton: "Load model",
           metadataUrlLabel: "Metadata URL",
-          modelLoaded: ({boardSize, inputLength}) =>
-            `Model loaded: ${boardSize}x${boardSize}, input_length=${inputLength}`,
+          modelLoaded: ({boardSize, inChannels}) =>
+            `Model loaded: ${boardSize}x${boardSize}, in_channels=${inChannels}`,
           modelLoading: "Loading model...",
           modelUnloaded: "Model not loaded",
           modelUrlLabel: "Model URL",
           moveLogEmpty: "No moves yet.",
-          moveLogEntry: ({moveNumber, playerLabel, coord, probability, reward}) => {
+          moveLogEntry: ({moveNumber, playerLabel, coord, qValue, reward}) => {
             let text = `${moveNumber}. ${playerLabel} ${coord}`;
-            if (probability != null) {
-              text += ` prob=${probability}`;
+            if (qValue != null) {
+              text += ` q=${qValue}`;
             }
             if (reward != null) {
               text += ` reward=${reward}`;
@@ -621,7 +620,7 @@
             `Reward: ${playerLabel} ${coord} → ${reward}`,
           runPredictButton: "Run inference",
           statusAiMoveFailed: ({message}) => `AI move failed: ${message}`,
-          title: "Renju Transformer ONNX Demo",
+          title: "Renju DQN ONNX Demo",
           turnCurrent: ({playerLabel, actorLabel}) => `Turn: ${playerLabel} (${actorLabel})`,
           turnGameOver: "Turn: game over",
           white: "White",
@@ -846,7 +845,7 @@
               coord: indexToCoord(entry.index),
               moveNumber: index + 1,
               playerLabel: playerName(entry.player),
-              probability: entry.probability,
+              qValue: entry.qValue,
               reward: entry.reward,
             });
           })
@@ -993,7 +992,7 @@
         });
         setStatus("modelLoaded", {
           boardSize: loaded.metadata.board_size,
-          inputLength: loaded.metadata.input_length,
+          inChannels: loaded.metadata.in_channels,
         });
         return loaded;
       }
@@ -1015,26 +1014,31 @@
         refreshGameSummary("aiThinking");
         try {
           const {session, metadata} = await ensureLoaded();
-          const prediction = await predictBoard(session, gameState.board, metadata, {
-            topK: 5,
-            applyLegalMask: true,
-          });
+          const aiLastMoveIndex = gameState.lastMoveIndex;
+          const prediction = await predictBoard(
+            session,
+            gameState.board,
+            WHITE,
+            aiLastMoveIndex,
+            metadata,
+            {topK: 5, applyLegalMask: true},
+          );
           const aiIndex = prediction.predictedIndex;
           const prevBoard = gameState.board.slice();
           gameState.board[aiIndex] = WHITE;
           gameState.lastMoveIndex = aiIndex;
-          const probability = prediction.predictedProbability.toFixed(4);
+          const qValue = prediction.predictedQValue.toFixed(4);
           const reward = recordMoveReward(prevBoard, WHITE, aiIndex);
           gameState.moveLog.push({
             index: aiIndex,
             player: WHITE,
-            probability,
+            qValue,
             reward: formatReward(reward),
           });
           setAiStatus("aiMoved", {
             coord: indexToCoord(aiIndex),
-            moveId: prediction.predictedMoveId,
-            probability,
+            index: aiIndex,
+            qValue,
           });
           setResult(JSON.stringify(prediction, null, 2));
           if (!evaluateBoardAfterMove()) {
@@ -1096,12 +1100,13 @@
         try {
           const {session, metadata} = await ensureLoaded();
           const board = parseBoardCsv(boardCsvInput.value.trim());
-          const prediction = await predictBoard(session, board, metadata, {
+          const player = inferPlayer(board);
+          const prediction = await predictBoard(session, board, player, null, metadata, {
             topK: 5,
             applyLegalMask: true,
           });
           setResult(JSON.stringify(prediction, null, 2));
-          setStatus("inferenceComplete", {moveId: prediction.predictedMoveId});
+          setStatus("inferenceComplete", {index: prediction.predictedIndex});
         } catch (error) {
           setResult(error.stack ?? String(error));
           setStatus("inferenceFailed", {message: error.message});

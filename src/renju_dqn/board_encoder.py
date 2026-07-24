@@ -35,6 +35,34 @@ def encode_board(board: Sequence[int], player: int, last_move: int | None) -> to
     return torch.stack((own_plane, opponent_plane, last_move_plane, side_to_move_plane), dim=0)
 
 
+def encode_boards(
+    boards: Sequence[Sequence[int]],
+    players: Sequence[int],
+    last_moves: Sequence[int | None],
+) -> torch.Tensor:
+    """Batched form of `encode_board`: identical per-sample semantics, vectorized over the
+    batch dimension so replay-buffer sampling doesn't build one small tensor per transition.
+    """
+    batch_size = len(boards)
+    board_tensor = torch.tensor(boards, dtype=torch.float32).reshape(batch_size, BOARD_SIZE, BOARD_SIZE)
+    player_tensor = torch.tensor(players, dtype=torch.float32).reshape(batch_size, 1, 1)
+    opponent_tensor = torch.where(
+        player_tensor == BLACK, torch.tensor(float(WHITE)), torch.tensor(float(BLACK))
+    )
+    own_plane = (board_tensor == player_tensor).float()
+    opponent_plane = (board_tensor == opponent_tensor).float()
+
+    last_move_plane = torch.zeros(batch_size, BOARD_SIZE, BOARD_SIZE)
+    for i, last_move in enumerate(last_moves):
+        if last_move is not None:
+            row, col = divmod(last_move, BOARD_SIZE)
+            last_move_plane[i, row, col] = 1.0
+
+    side_to_move_plane = (player_tensor == BLACK).float().expand(batch_size, BOARD_SIZE, BOARD_SIZE)
+
+    return torch.stack((own_plane, opponent_plane, last_move_plane, side_to_move_plane), dim=1)
+
+
 def encode_legal_move_mask(board: Sequence[int]) -> torch.Tensor:
     return torch.tensor(legal_move_mask(list(board)), dtype=torch.bool)
 
@@ -87,6 +115,27 @@ def apply_transform(
     new_action = int(_ACTION_PERMUTATIONS[transform_index][action].item())
     new_legal_mask = transform(legal_mask.reshape(BOARD_SIZE, BOARD_SIZE)).reshape(-1)
     return new_state, new_next_state, new_action, new_legal_mask
+
+
+def apply_transform_batch(
+    transform_index: int,
+    states: torch.Tensor,
+    next_states: torch.Tensor,
+    actions: torch.Tensor,
+    legal_masks: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Batched form of `apply_transform`: applies the same D4 symmetry to every row of a
+    `(B, C, H, W)` batch in one vectorized op, instead of once per sample.
+    """
+    transform = D4_TRANSFORMS[transform_index]
+    batch_size = legal_masks.shape[0]
+    new_states = transform(states)
+    new_next_states = transform(next_states)
+    new_actions = _ACTION_PERMUTATIONS[transform_index][actions]
+    new_legal_masks = transform(legal_masks.reshape(batch_size, BOARD_SIZE, BOARD_SIZE)).reshape(
+        batch_size, -1
+    )
+    return new_states, new_next_states, new_actions, new_legal_masks
 
 
 def random_augment(

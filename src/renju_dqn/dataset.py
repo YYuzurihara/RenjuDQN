@@ -46,6 +46,7 @@ class _Transition:
     prev_move: int | None
     next_board: list[int] | None
     done: bool
+    steps_to_end: int
 
 
 Sample = tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
@@ -81,6 +82,7 @@ class ReplayDataset(Dataset[Sample]):
 
         for rows in games.values():
             rows.sort(key=lambda row: row.ply)
+            game_length = len(rows)
             for position, row in enumerate(rows):
                 prev_move = rows[position - 1].move if position > 0 else None
                 next_board = rows[position + 1].board if position + 1 < len(rows) else None
@@ -94,6 +96,7 @@ class ReplayDataset(Dataset[Sample]):
                         prev_move=prev_move,
                         next_board=next_board,
                         done=done,
+                        steps_to_end=game_length - 1 - position,
                     )
                 )
                 if max_rows is not None and len(self.transitions) >= max_rows:

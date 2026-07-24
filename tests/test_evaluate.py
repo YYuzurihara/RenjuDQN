@@ -40,6 +40,7 @@ def _filled_replay_buffer() -> ReplayBuffer:
             prev_move=None,
             next_board=next_board,
             done=False,
+            steps_to_end=1,
         )
     return buffer
 

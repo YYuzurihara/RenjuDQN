@@ -21,6 +21,7 @@ from .dataset import ReplayDataset
 from .env import SelectMove, play_self_play_game
 from .model import RenjuResNetDQN
 from .replay_buffer import ReplayBuffer
+from .rules import BOARD_CELLS
 from .utils import ensure_mlflow_experiment, flatten_config, select_device, set_seed
 
 
@@ -53,14 +54,31 @@ def build_scheduler(optimizer: torch.optim.Optimizer, cfg: DictConfig):
     raise ValueError(f"Unsupported scheduler: {cfg.scheduler.name}")
 
 
-def epsilon_for_step(
-    step: int, epsilon_start: float, epsilon_end: float, decay_steps: int
+def epsilon_for_curriculum(
+    window: int | None, board_cells: int, epsilon_start: float, epsilon_end: float
 ) -> float:
-    """Linear anneal from `epsilon_start` (step 0) to `epsilon_end` (step >= decay_steps)."""
-    if decay_steps <= 0:
+    """Anneal epsilon by curriculum progress instead of a separately-tuned step count: full
+    exploration while the window covers none of the game, decaying to `epsilon_end` exactly as
+    the window reaches `board_cells`. Keeps self-play exploring for as long as curriculum training
+    hasn't reached the states self-play is generating, and tracks curriculum_step_size /
+    curriculum_epoch_interval automatically if they change.
+    """
+    if window is None:
         return epsilon_end
-    fraction = min(1.0, step / decay_steps)
-    return epsilon_start + fraction * (epsilon_end - epsilon_start)
+    fraction_covered = min(1.0, window / board_cells)
+    return epsilon_start + fraction_covered * (epsilon_end - epsilon_start)
+
+
+def curriculum_window_for_epoch(epoch: int, step_size: int, epoch_interval: int) -> int | None:
+    """Steps-from-terminal window for `epoch` (1-indexed): opens `step_size` more steps every
+    `epoch_interval` epochs (epoch 1..interval -> step_size, interval+1..2*interval -> 2*step_size,
+    ...). Returns `None` (no filtering) once `step_size` is non-positive.
+    """
+    if step_size <= 0:
+        return None
+    interval = max(1, epoch_interval)
+    stage = -(-epoch // interval)  # ceil division
+    return step_size * stage
 
 
 def make_epsilon_greedy_policy(
@@ -99,10 +117,11 @@ def dqn_update(
     device: torch.device,
     gradient_clip_norm: float | None,
     generator: torch.Generator,
+    max_steps_from_end: int | None = None,
 ) -> tuple[float, float]:
     """One TD-error gradient step; returns `(loss, mean_q_taken)`."""
     state, action, reward, next_state, done, next_legal_mask = replay_buffer.sample(
-        batch_size, generator=generator
+        batch_size, generator=generator, max_steps_from_end=max_steps_from_end
     )
     state = state.to(device)
     action = action.to(device)
@@ -186,25 +205,28 @@ def train_model(cfg: DictConfig) -> None:
         mlflow.log_artifact(str(resolved_config_path), artifact_path="configs")
 
         for epoch in range(1, cfg.train.max_epochs + 1):
+            curriculum_window = curriculum_window_for_epoch(
+                epoch, cfg.train.curriculum_step_size, cfg.train.curriculum_epoch_interval
+            )
+            epsilon = epsilon_for_curriculum(
+                curriculum_window, BOARD_CELLS, cfg.train.epsilon_start, cfg.train.epsilon_end
+            )
+            select_move = make_epsilon_greedy_policy(online_model, device, epsilon, generator)
             epoch_loss_total = 0.0
             epoch_q_total = 0.0
             epoch_updates = 0
             epoch_progress = tqdm(
                 range(cfg.train.steps_per_epoch),
-                desc=f"Epoch {epoch}/{cfg.train.max_epochs} [self-play]",
+                desc=(
+                    f"Epoch {epoch}/{cfg.train.max_epochs} "
+                    f"[self-play{f', last {curriculum_window} steps' if curriculum_window is not None else ''}]"
+                ),
                 leave=True,
                 dynamic_ncols=True,
                 file=sys.stdout,
             )
 
             for _ in epoch_progress:
-                epsilon = epsilon_for_step(
-                    global_step,
-                    cfg.train.epsilon_start,
-                    cfg.train.epsilon_end,
-                    cfg.train.epsilon_decay_steps,
-                )
-                select_move = make_epsilon_greedy_policy(online_model, device, epsilon, generator)
                 rows, winner = play_self_play_game(select_move)
                 replay_buffer.push_game(rows, winner)
 
@@ -220,6 +242,7 @@ def train_model(cfg: DictConfig) -> None:
                         device,
                         cfg.train.gradient_clip_norm,
                         generator,
+                        max_steps_from_end=curriculum_window,
                     )
                     if scheduler is not None:
                         scheduler.step()

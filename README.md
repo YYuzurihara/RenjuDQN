@@ -119,6 +119,23 @@ uv run python ./renju-dqn.py mode=evaluate \
   predict.num_eval_games=20
 ```
 
+## ONNX エクスポート
+
+学習済み checkpoint を ONNX 形式に変換し、ブラウザ（`docs/index.html` + `docs/renju_onnx.js`）から
+ONNX Runtime Web で推論できるようにします。
+
+```bash
+uv run python ./scripts/export_onnx.py \
+  --checkpoint artifacts/checkpoints/best_model.pt \
+  --output docs/renju_dqn.onnx
+```
+
+`docs/renju_dqn.onnx` と、盤面サイズ・チャンネル数などのメタデータを含む
+`docs/renju_dqn.onnx.metadata.json` が書き出されます（`--metadata-output` で出力先を変更可能）。
+`onnx`/`onnxscript` が未インストールの場合はエラーメッセージの指示に従い、
+`uv add onnx onnxscript` するか `uv run --with onnx --with onnxscript python ./scripts/export_onnx.py ...`
+を使ってください。
+
 ## MLflow
 
 追跡 DB は SQLite、artifact はローカルディレクトリです。

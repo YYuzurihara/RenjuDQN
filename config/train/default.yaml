@@ -17,4 +17,16 @@ steps_per_epoch: 300 # self-play games per epoch
 updates_per_game: 4 # gradient updates after each self-play game
 epsilon_start: 1.0
 epsilon_end: 0.1
-epsilon_decay_steps: 20000 # anneal over this many gradient steps
+# epsilon is annealed by curriculum progress rather than a step count (see
+# epsilon_for_curriculum in train.py): epsilon_start while the window below covers none of the
+# game, decaying to epsilon_end exactly as the window reaches the full board. This keeps
+# self-play exploring for as long as curriculum training hasn't reached the states self-play is
+# generating, and it automatically tracks curriculum_step_size / curriculum_epoch_interval below
+# if they change.
+
+# Curriculum learning: sample only within the last `curriculum_step_size * ceil(epoch /
+# curriculum_epoch_interval)` steps of each game, expanding the window as training progresses
+# (e.g. epoch 1 -> last 5 steps, epoch 2 -> last 10 steps, ... with the defaults below).
+# Set curriculum_step_size to 0 to disable and always sample from the full buffer.
+curriculum_step_size: 5
+curriculum_epoch_interval: 1

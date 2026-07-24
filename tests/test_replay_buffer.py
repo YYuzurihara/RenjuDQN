@@ -45,6 +45,7 @@ def test_push_and_sample_shapes():
             prev_move=None,
             next_board=next_board,
             done=False,
+            steps_to_end=1,
         )
 
     assert len(buffer) == 4
@@ -71,6 +72,7 @@ def test_capacity_evicts_oldest_transition():
             prev_move=None,
             next_board=board,
             done=True,
+            steps_to_end=0,
         )
 
     assert len(buffer) == 2
@@ -82,6 +84,84 @@ def test_sample_raises_when_buffer_too_small():
     buffer = ReplayBuffer(capacity=10, gamma=GAMMA)
     with pytest.raises(ValueError, match="Not enough transitions"):
         buffer.sample(1)
+
+
+def test_sample_with_window_returns_only_transitions_within_window():
+    buffer = ReplayBuffer(capacity=10, gamma=GAMMA)
+    board = [0] * BOARD_CELLS
+    # steps_to_end: 5, 2, 1, 0, 0 -- last three are within a window of 2 (distances 0 and 1).
+    for steps_to_end in (5, 2, 1, 0, 0):
+        buffer.push(
+            board=board,
+            player=BLACK,
+            move=CENTER,
+            winner=BLACK,
+            prev_move=None,
+            next_board=board,
+            done=steps_to_end == 0,
+            steps_to_end=steps_to_end,
+        )
+
+    for _ in range(20):
+        _, _, _, _, done, _ = buffer.sample(3, max_steps_from_end=2)
+        assert done.sum().item() >= 2  # only the two done=True transitions have steps_to_end < 2
+
+
+def test_sample_with_window_raises_when_not_enough_transitions_in_window():
+    buffer = ReplayBuffer(capacity=10, gamma=GAMMA)
+    board = [0] * BOARD_CELLS
+    buffer.push(
+        board=board,
+        player=BLACK,
+        move=CENTER,
+        winner=BLACK,
+        prev_move=None,
+        next_board=board,
+        done=False,
+        steps_to_end=5,
+    )
+
+    with pytest.raises(ValueError, match="Not enough transitions within"):
+        buffer.sample(1, max_steps_from_end=2)
+
+
+def test_capacity_evicts_distance_bucket_entry():
+    buffer = ReplayBuffer(capacity=2, gamma=GAMMA)
+    board = [0] * BOARD_CELLS
+    buffer.push(
+        board=board,
+        player=BLACK,
+        move=0,
+        winner=BLACK,
+        prev_move=None,
+        next_board=board,
+        done=True,
+        steps_to_end=0,
+    )
+    buffer.push(
+        board=board,
+        player=BLACK,
+        move=1,
+        winner=BLACK,
+        prev_move=None,
+        next_board=board,
+        done=False,
+        steps_to_end=5,
+    )
+    # Overwrites the first (steps_to_end=0) slot; its distance-bucket entry must be evicted too.
+    buffer.push(
+        board=board,
+        player=BLACK,
+        move=2,
+        winner=BLACK,
+        prev_move=None,
+        next_board=board,
+        done=False,
+        steps_to_end=5,
+    )
+
+    with pytest.raises(ValueError, match="Not enough transitions within"):
+        buffer.sample(1, max_steps_from_end=1)
 
 
 def test_push_game_marks_only_final_row_done():
@@ -97,8 +177,10 @@ def test_push_game_marks_only_final_row_done():
     transitions = buffer._transitions
     assert transitions[0].done is False
     assert transitions[0].next_board == board1
+    assert transitions[0].steps_to_end == 1
     assert transitions[1].done is True
     assert transitions[1].winner == BLACK
+    assert transitions[1].steps_to_end == 0
 
 
 def test_warmup_from_dataset_matches_dataset_length(tmp_path):
@@ -110,3 +192,4 @@ def test_warmup_from_dataset_matches_dataset_length(tmp_path):
     buffer.warmup_from_dataset(dataset)
 
     assert len(buffer) == len(dataset)
+    assert [t.steps_to_end for t in buffer._transitions] == [1, 0]

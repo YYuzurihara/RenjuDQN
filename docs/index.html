@@ -371,11 +371,15 @@
             <div class="stat" id="turn-status">手番: 黒(あなた)</div>
             <div class="stat" id="game-status">状態: 開始前</div>
             <div class="stat" id="ai-status">AI: まだ着手していません</div>
+            <div class="stat" id="reward-status">報酬: まだ手がありません</div>
           </div>
           <div class="actions">
             <button id="new-game" type="button" data-i18n="newGameButton">新しい対局</button>
             <button id="ai-move" type="button" class="secondary" data-i18n="aiMoveButton">
               AI に着手させる
+            </button>
+            <button id="reward-shaping-toggle" type="button" class="secondary" aria-pressed="true">
+              報酬シェーピング: ON
             </button>
           </div>
           <div>
@@ -430,9 +434,11 @@
     <script type="module">
       import {
         BLACK,
+        DRAW,
         WHITE,
         boardIsFull,
         boardWinner,
+        computeReward,
         legalMoveMask,
         loadModel,
         parseBoardCsv,
@@ -441,6 +447,9 @@
       } from "./renju_onnx.js";
 
       const ORT_VERSION = "1.23.2";
+      // Matches the demo default used while tuning src/renju_transformer/reward.py;
+      // once train config wires up a real gamma (フェーズ6), read it from there instead.
+      const DEFAULT_GAMMA = 0.99;
       setOrtRuntime(globalThis.ort);
       ort.env.wasm.wasmPaths = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
 
@@ -454,11 +463,13 @@
       const fillEmptyButton = document.querySelector("#fill-empty");
       const newGameButton = document.querySelector("#new-game");
       const aiMoveButton = document.querySelector("#ai-move");
+      const rewardShapingToggleButton = document.querySelector("#reward-shaping-toggle");
       const statusNode = document.querySelector("#status");
       const boardInfoNode = document.querySelector("#board-info");
       const turnStatusNode = document.querySelector("#turn-status");
       const gameStatusNode = document.querySelector("#game-status");
       const aiStatusNode = document.querySelector("#ai-status");
+      const rewardStatusNode = document.querySelector("#reward-status");
       const moveLogNode = document.querySelector("#move-log");
       const resultNode = document.querySelector("#result");
       const languageToggleButton = document.querySelector("#language-toggle");
@@ -509,10 +520,16 @@
           modelUnloaded: "モデル未ロード",
           modelUrlLabel: "モデル URL",
           moveLogEmpty: "まだ手がありません。",
-          moveLogEntry: ({moveNumber, playerLabel, coord, probability}) =>
-            probability == null
-              ? `${moveNumber}. ${playerLabel} ${coord}`
-              : `${moveNumber}. ${playerLabel} ${coord} prob=${probability}`,
+          moveLogEntry: ({moveNumber, playerLabel, coord, probability, reward}) => {
+            let text = `${moveNumber}. ${playerLabel} ${coord}`;
+            if (probability != null) {
+              text += ` prob=${probability}`;
+            }
+            if (reward != null) {
+              text += ` reward=${reward}`;
+            }
+            return text;
+          },
           moveLogLabel: "棋譜ログ",
           newGame: "新しい対局",
           newGameButton: "新しい対局",
@@ -521,6 +538,12 @@
           openingTip: "初手なので中央においてね",
           resultIdle: "まだ推論していません。",
           resultLabel: "推論結果",
+          rewardShapingOff: "OFF",
+          rewardShapingOn: "ON",
+          rewardShapingToggleLabel: ({state}) => `報酬シェーピング: ${state}`,
+          rewardStatusIdle: "報酬: まだ手がありません",
+          rewardStatusValue: ({playerLabel, coord, reward}) =>
+            `報酬: ${playerLabel} ${coord} → ${reward}`,
           runPredictButton: "推論する",
           statusAiMoveFailed: ({message}) => `AI 着手失敗: ${message}`,
           title: "Renju Transformer ONNX デモ",
@@ -572,10 +595,16 @@
           modelUnloaded: "Model not loaded",
           modelUrlLabel: "Model URL",
           moveLogEmpty: "No moves yet.",
-          moveLogEntry: ({moveNumber, playerLabel, coord, probability}) =>
-            probability == null
-              ? `${moveNumber}. ${playerLabel} ${coord}`
-              : `${moveNumber}. ${playerLabel} ${coord} prob=${probability}`,
+          moveLogEntry: ({moveNumber, playerLabel, coord, probability, reward}) => {
+            let text = `${moveNumber}. ${playerLabel} ${coord}`;
+            if (probability != null) {
+              text += ` prob=${probability}`;
+            }
+            if (reward != null) {
+              text += ` reward=${reward}`;
+            }
+            return text;
+          },
           moveLogLabel: "Move log",
           newGame: "New game",
           newGameButton: "New game",
@@ -584,6 +613,12 @@
           openingTip: "First move must be at the center",
           resultIdle: "No inference yet.",
           resultLabel: "Inference result",
+          rewardShapingOff: "OFF",
+          rewardShapingOn: "ON",
+          rewardShapingToggleLabel: ({state}) => `Reward shaping: ${state}`,
+          rewardStatusIdle: "Reward: no moves yet",
+          rewardStatusValue: ({playerLabel, coord, reward}) =>
+            `Reward: ${playerLabel} ${coord} → ${reward}`,
           runPredictButton: "Run inference",
           statusAiMoveFailed: ({message}) => `AI move failed: ${message}`,
           title: "Renju Transformer ONNX Demo",
@@ -612,10 +647,12 @@
       const displayState = {
         aiStatus: {key: "aiIdle", args: {}},
         result: {kind: "translated", key: "resultIdle", args: {}},
+        rewardStatus: {key: "rewardStatusIdle", args: {}},
         status: {key: "modelUnloaded", args: {}},
       };
 
       let loaded = null;
+      let rewardShapingEnabled = true;
       const gameState = {
         board: new Array(225).fill(0),
         busy: false,
@@ -683,6 +720,28 @@
         renderAiStatus();
       }
 
+      function renderRewardStatus() {
+        rewardStatusNode.textContent = t(
+          displayState.rewardStatus.key,
+          displayState.rewardStatus.args,
+        );
+      }
+
+      function setRewardStatus(key, args = {}) {
+        displayState.rewardStatus = {key, args};
+        renderRewardStatus();
+      }
+
+      function formatReward(reward) {
+        return `${reward >= 0 ? "+" : ""}${reward.toFixed(4)}`;
+      }
+
+      function renderRewardShapingToggle() {
+        const state = t(rewardShapingEnabled ? "rewardShapingOn" : "rewardShapingOff");
+        rewardShapingToggleButton.textContent = t("rewardShapingToggleLabel", {state});
+        rewardShapingToggleButton.setAttribute("aria-pressed", String(rewardShapingEnabled));
+      }
+
       function renderResult() {
         resultNode.textContent =
           displayState.result.kind === "translated"
@@ -716,6 +775,8 @@
         renderLanguageToggle();
         renderStatus();
         renderAiStatus();
+        renderRewardStatus();
+        renderRewardShapingToggle();
         renderResult();
         refreshGameSummary();
       }
@@ -786,6 +847,7 @@
               moveNumber: index + 1,
               playerLabel: playerName(entry.player),
               probability: entry.probability,
+              reward: entry.reward,
             });
           })
           .join("\n");
@@ -875,6 +937,40 @@
         return false;
       }
 
+      // Reward shaping only cares whether *this* board is terminal and who won it —
+      // same three cases evaluateBoardAfterMove() branches on, without the game-state side effects.
+      function currentOutcome() {
+        const winner = boardWinner(gameState.board, loaded?.metadata);
+        if (winner === BLACK || winner === WHITE) {
+          return {done: true, winner};
+        }
+        if (boardIsFull(gameState.board, loaded?.metadata)) {
+          return {done: true, winner: DRAW};
+        }
+        return {done: false, winner: DRAW};
+      }
+
+      function recordMoveReward(prevBoard, player, index) {
+        const outcome = currentOutcome();
+        // Passing 0 zeroes out the shaping term but keeps the +-1 terminal reward intact.
+        const coefficient = rewardShapingEnabled ? undefined : 0;
+        const reward = computeReward(
+          prevBoard,
+          gameState.board,
+          player,
+          outcome.winner,
+          outcome.done,
+          DEFAULT_GAMMA,
+          coefficient,
+        );
+        setRewardStatus("rewardStatusValue", {
+          playerLabel: playerName(player),
+          coord: indexToCoord(index),
+          reward: formatReward(reward),
+        });
+        return reward;
+      }
+
       function resetGame() {
         gameState.board = new Array(225).fill(0);
         gameState.busy = false;
@@ -882,6 +978,7 @@
         gameState.lastMoveIndex = null;
         gameState.moveLog = [];
         setAiStatus("aiIdle");
+        setRewardStatus("rewardStatusIdle");
         refreshGameSummary("newGame");
         setTranslatedResult("resultIdle");
       }
@@ -923,10 +1020,17 @@
             applyLegalMask: true,
           });
           const aiIndex = prediction.predictedIndex;
+          const prevBoard = gameState.board.slice();
           gameState.board[aiIndex] = WHITE;
           gameState.lastMoveIndex = aiIndex;
           const probability = prediction.predictedProbability.toFixed(4);
-          gameState.moveLog.push({index: aiIndex, player: WHITE, probability});
+          const reward = recordMoveReward(prevBoard, WHITE, aiIndex);
+          gameState.moveLog.push({
+            index: aiIndex,
+            player: WHITE,
+            probability,
+            reward: formatReward(reward),
+          });
           setAiStatus("aiMoved", {
             coord: indexToCoord(aiIndex),
             moveId: prediction.predictedMoveId,
@@ -959,9 +1063,11 @@
           setStatus("illegalMove", {coord: indexToCoord(index)});
           return;
         }
+        const prevBoard = gameState.board.slice();
         gameState.board[index] = BLACK;
         gameState.lastMoveIndex = index;
-        gameState.moveLog.push({index, player: BLACK});
+        const reward = recordMoveReward(prevBoard, BLACK, index);
+        gameState.moveLog.push({index, player: BLACK, reward: formatReward(reward)});
         setAiStatus("aiAfterHumanMove");
         refreshGameSummary("aiTurn");
         if (evaluateBoardAfterMove()) {
@@ -1011,6 +1117,10 @@
 
       newGameButton.addEventListener("click", resetGame);
       aiMoveButton.addEventListener("click", runAiMove);
+      rewardShapingToggleButton.addEventListener("click", () => {
+        rewardShapingEnabled = !rewardShapingEnabled;
+        renderRewardShapingToggle();
+      });
       languageToggleButton.addEventListener("click", () => {
         const nextLanguage = currentLanguage === "ja" ? "en" : "ja";
         writeLanguagePreference(nextLanguage);

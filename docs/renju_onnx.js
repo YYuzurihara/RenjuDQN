@@ -291,6 +291,67 @@ export function boardIsFull(board, metadata = DEFAULT_METADATA) {
   return board.every((cell) => cell !== EMPTY);
 }
 
+// Mirrors src/renju_transformer/reward.py — keep the two in sync.
+export const DRAW = 0;
+export const FOUR_WEIGHT = 9;
+export const OPEN_THREE_WEIGHT = 3;
+export const POTENTIAL_SCALE = 5.0;
+export const DEFAULT_SHAPING_COEFFICIENT = 0.1;
+
+export function stoneThreatScore(board, index, player, boardSize = DEFAULT_METADATA.board_size) {
+  const fours = countFourDirections(board, index, player, boardSize);
+  const openThrees = countOpenThreeDirections(board, index, player, boardSize);
+  return FOUR_WEIGHT * fours + OPEN_THREE_WEIGHT * openThrees;
+}
+
+export function boardPotential(board, player, boardSize = DEFAULT_METADATA.board_size) {
+  const opponent = player === BLACK ? WHITE : BLACK;
+  let ownScore = 0;
+  let opponentScore = 0;
+  for (let index = 0; index < board.length; index += 1) {
+    const cell = board[index];
+    if (cell === player) {
+      ownScore += stoneThreatScore(board, index, player, boardSize);
+    } else if (cell === opponent) {
+      opponentScore += stoneThreatScore(board, index, opponent, boardSize);
+    }
+  }
+  return ownScore - opponentScore;
+}
+
+export function normalizedPotential(
+  board,
+  player,
+  scale = POTENTIAL_SCALE,
+  boardSize = DEFAULT_METADATA.board_size,
+) {
+  return Math.tanh(boardPotential(board, player, boardSize) / scale);
+}
+
+export function terminalReward(player, winner) {
+  if (winner === DRAW) {
+    return 0.0;
+  }
+  return winner === player ? 1.0 : -1.0;
+}
+
+export function computeReward(
+  board,
+  nextBoard,
+  player,
+  winner,
+  done,
+  gamma,
+  coefficient = DEFAULT_SHAPING_COEFFICIENT,
+  scale = POTENTIAL_SCALE,
+  boardSize = DEFAULT_METADATA.board_size,
+) {
+  const sparse = done ? terminalReward(player, winner) : 0.0;
+  const phiT = normalizedPotential(board, player, scale, boardSize);
+  const phiNext = done ? 0.0 : normalizedPotential(nextBoard, player, scale, boardSize);
+  return sparse + coefficient * (gamma * phiNext - phiT);
+}
+
 export function playerLabel(player) {
   if (player === BLACK) {
     return "black";

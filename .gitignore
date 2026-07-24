@@ -211,6 +211,8 @@ mlruns/
 outputs/
 mlflow.db
 mlflow.db-*
+*.out
+*.pid
 
 # Marimo
 marimo/_static/

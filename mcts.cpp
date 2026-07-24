@@ -26,8 +26,6 @@ constexpr int BLACK = 1;
 constexpr int WHITE = 2;
 constexpr int DRAW = 0;
 constexpr int NO_WINNER = -1;
-constexpr int SEP_TOKEN_ID = 228;
-constexpr int MOVE_ID_OFFSET = 3;
 constexpr int DEFAULT_SIMULATIONS = 1000;
 constexpr int DEFAULT_CANDIDATE_LIMIT = 16;
 constexpr int DEFAULT_ROLLOUT_LIMIT = 16;
@@ -59,6 +57,13 @@ struct GameResult {
     int plies = 0;
     bool foul_loss = false;
     std::string csv_rows;
+};
+
+struct BufferedRow {
+    int ply = 0;
+    int player = BLACK;
+    Board board {};
+    int move = -1;
 };
 
 int center_index() {
@@ -682,15 +687,31 @@ int run_mcts(const Board& board, int player, const Options& options, const std::
     return (*best_it)->move_played;
 }
 
-void append_training_row(std::string& buffer, const Board& board, int move) {
-    for (int index = 0; index < BOARD_CELLS; ++index) {
-        buffer += std::to_string(board[static_cast<std::size_t>(index)]);
+void append_game_rows(
+    std::string& buffer,
+    std::uint64_t game_id,
+    const std::vector<BufferedRow>& rows,
+    int winner,
+    bool foul_loss
+) {
+    for (const BufferedRow& row : rows) {
+        buffer += std::to_string(game_id);
         buffer.push_back(',');
+        buffer += std::to_string(row.ply);
+        buffer.push_back(',');
+        buffer += std::to_string(row.player);
+        buffer.push_back(',');
+        for (int index = 0; index < BOARD_CELLS; ++index) {
+            buffer += std::to_string(row.board[static_cast<std::size_t>(index)]);
+            buffer.push_back(',');
+        }
+        buffer += std::to_string(row.move);
+        buffer.push_back(',');
+        buffer += std::to_string(winner);
+        buffer.push_back(',');
+        buffer += std::to_string(foul_loss ? 1 : 0);
+        buffer.push_back('\n');
     }
-    buffer += std::to_string(SEP_TOKEN_ID);
-    buffer.push_back(',');
-    buffer += std::to_string(move + MOVE_ID_OFFSET);
-    buffer.push_back('\n');
 }
 
 std::string winner_label(int winner, bool foul_loss) {
@@ -724,7 +745,13 @@ GameResult play_game(std::uint64_t game_index, int worker_id, const Options& opt
     board.fill(EMPTY);
 
     GameResult result;
-    result.csv_rows.reserve(4096);
+    std::vector<BufferedRow> buffered_rows;
+    buffered_rows.reserve(BOARD_CELLS);
+
+    auto finish = [&]() {
+        append_game_rows(result.csv_rows, game_index, buffered_rows, result.winner, result.foul_loss);
+        return result;
+    };
 
     int current_player = BLACK;
     while (true) {
@@ -739,11 +766,11 @@ GameResult play_game(std::uint64_t game_index, int worker_id, const Options& opt
         const std::vector<int> legal_moves = generate_policy_moves(board, current_player, options.candidate_limit);
         if (legal_moves.empty()) {
             result.winner = board_is_full(board) ? DRAW : other_player(current_player);
-            return result;
+            return finish();
         }
 
         const int move = select_move(board, current_player, options, rng);
-        append_training_row(result.csv_rows, board, move);
+        buffered_rows.push_back(BufferedRow{result.plies + 1, current_player, board, move});
         board[static_cast<std::size_t>(move)] = current_player;
         ++result.plies;
 
@@ -751,12 +778,12 @@ GameResult play_game(std::uint64_t game_index, int worker_id, const Options& opt
         if (winner != NO_WINNER) {
             result.winner = winner;
             result.foul_loss = (current_player == BLACK && winner == WHITE);
-            return result;
+            return finish();
         }
 
         if (board_is_full(board)) {
             result.winner = DRAW;
-            return result;
+            return finish();
         }
 
         current_player = other_player(current_player);

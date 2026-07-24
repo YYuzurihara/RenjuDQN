@@ -1,6 +1,6 @@
 defaults:
   - data: default
-  - model: transformer
+  - model: resnet
   - train: default
   - optimizer: adamw
   - scheduler: none

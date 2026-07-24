@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=68", "wheel", "pybind11>=2.13,<3.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "renju-transformer"
+name = "renju-dqn"
 version = "0.1.0"
-description = "TransformerEncoder training pipeline for Renju next-move prediction"
+description = "ResNet DQN training pipeline for Renju self-play"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [

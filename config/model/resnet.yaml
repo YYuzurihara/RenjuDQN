@@ -1,0 +1,6 @@
+in_channels: 4 # renju_dqn.board_encoder.NUM_CHANNELS
+channels: 64
+num_blocks: 6
+head_channels: 2
+num_move_labels: 225
+dueling: false

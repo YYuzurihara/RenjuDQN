@@ -1,5 +1,5 @@
 tracking_uri: sqlite:///mlflow.db
-experiment_name: RenjuTransformer
+experiment_name: RenjuDQN
 artifact_root: mlruns
-run_name_prefix: renju-transformer
+run_name_prefix: renju-dqn
 log_model: true

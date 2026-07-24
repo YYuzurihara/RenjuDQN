@@ -106,21 +106,24 @@ std::vector<int> line_points_through(int index, int dr, int dc) {
 }
 
 // Candidate indices along `line_points` where `player` playing there completes 5-in-a-row.
+// Takes `board` by mutable reference and restores every cell it touches, so callers can chain
+// these checks without paying for a full 225-cell copy at each nesting level.
 std::vector<int> immediate_wins_in_direction(
-    const Board& board, int player, const std::vector<int>& line_points
+    Board& board, int player, const std::vector<int>& line_points
 ) {
     std::vector<int> wins;
     for (int candidate : line_points) {
         if (board[candidate] != EMPTY) continue;
-        Board next_board = board;
-        next_board[candidate] = player;
-        if (player == BLACK && is_overline(next_board, candidate, BLACK)) continue;
-        if (has_five_or_more(next_board, candidate, player)) wins.push_back(candidate);
+        board[candidate] = player;
+        bool overline = player == BLACK && is_overline(board, candidate, BLACK);
+        bool five = !overline && has_five_or_more(board, candidate, player);
+        board[candidate] = EMPTY;
+        if (five) wins.push_back(candidate);
     }
     return wins;
 }
 
-int count_four_directions(const Board& board, int move, int player) {
+int count_four_directions_impl(Board& board, int move, int player) {
     int count = 0;
     for (const auto& [dr, dc] : DIRECTIONS) {
         auto line_points = line_points_through(move, dr, dc);
@@ -129,18 +132,24 @@ int count_four_directions(const Board& board, int move, int player) {
     return count;
 }
 
-int count_open_three_directions(const Board& board, int move, int player) {
+int count_four_directions(const Board& board, int move, int player) {
+    Board working = board;
+    return count_four_directions_impl(working, move, player);
+}
+
+int count_open_three_directions_impl(Board& board, int move, int player) {
     int count = 0;
     for (const auto& [dr, dc] : DIRECTIONS) {
         auto line_points = line_points_through(move, dr, dc);
         bool found_open_three = false;
         for (int candidate : line_points) {
             if (board[candidate] != EMPTY) continue;
-            Board next_board = board;
-            next_board[candidate] = player;
-            if (player == BLACK && is_overline(next_board, candidate, BLACK)) continue;
-            auto winning_points = immediate_wins_in_direction(next_board, player, line_points);
-            if (winning_points.size() >= 2) {
+            board[candidate] = player;
+            bool overline = player == BLACK && is_overline(board, candidate, BLACK);
+            std::size_t winning_count =
+                overline ? 0 : immediate_wins_in_direction(board, player, line_points).size();
+            board[candidate] = EMPTY;
+            if (!overline && winning_count >= 2) {
                 found_open_three = true;
                 break;
             }
@@ -148,6 +157,11 @@ int count_open_three_directions(const Board& board, int move, int player) {
         if (found_open_three) ++count;
     }
     return count;
+}
+
+int count_open_three_directions(const Board& board, int move, int player) {
+    Board working = board;
+    return count_open_three_directions_impl(working, move, player);
 }
 
 std::pair<int, int> stone_counts(const Board& board) {
@@ -184,8 +198,8 @@ bool is_forbidden_for_black(const Board& board, int index) {
     Board next_board = board;
     next_board[index] = BLACK;
     if (is_overline(next_board, index, BLACK)) return true;
-    if (count_four_directions(next_board, index, BLACK) >= 2) return true;
-    if (count_open_three_directions(next_board, index, BLACK) >= 2) return true;
+    if (count_four_directions_impl(next_board, index, BLACK) >= 2) return true;
+    if (count_open_three_directions_impl(next_board, index, BLACK) >= 2) return true;
     return false;
 }
 

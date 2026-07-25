@@ -132,9 +132,6 @@ uv run python ./scripts/export_onnx.py \
 
 `docs/renju_dqn.onnx` と、盤面サイズ・チャンネル数などのメタデータを含む
 `docs/renju_dqn.onnx.metadata.json` が書き出されます（`--metadata-output` で出力先を変更可能）。
-`onnx`/`onnxscript` が未インストールの場合はエラーメッセージの指示に従い、
-`uv add onnx onnxscript` するか `uv run --with onnx --with onnxscript python ./scripts/export_onnx.py ...`
-を使ってください。
 
 ## MLflow
 

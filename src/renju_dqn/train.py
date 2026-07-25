@@ -356,8 +356,17 @@ def train_model(cfg: DictConfig) -> None:
     scheduler = build_scheduler(optimizer, cfg)
     criterion = nn.SmoothL1Loss()
 
-    replay_buffer = ReplayBuffer(capacity=cfg.train.replay_buffer_capacity, gamma=cfg.train.gamma)
-    warmup_dataset = ReplayDataset(cfg.data.path, gamma=cfg.train.gamma, max_rows=cfg.data.max_rows)
+    replay_buffer = ReplayBuffer(
+        capacity=cfg.train.replay_buffer_capacity,
+        gamma=cfg.train.gamma,
+        coefficient=cfg.train.reward_shaping_coefficient,
+    )
+    warmup_dataset = ReplayDataset(
+        cfg.data.path,
+        gamma=cfg.train.gamma,
+        coefficient=cfg.train.reward_shaping_coefficient,
+        max_rows=cfg.data.max_rows,
+    )
     replay_buffer.warmup_from_dataset(warmup_dataset)
     if len(replay_buffer) < cfg.train.batch_size:
         raise ValueError(
@@ -386,6 +395,12 @@ def train_model(cfg: DictConfig) -> None:
     best_checkpoint_path = checkpoint_dir / cfg.train.checkpoint_name
     best_model_state: dict[str, torch.Tensor] | None = None
     global_step = 0
+
+    # Namespaced by run_name (unlike best_checkpoint_path) so periodic checkpoints from
+    # different runs never collide/overwrite each other.
+    periodic_checkpoint_dir = checkpoint_dir / run_name
+    if cfg.train.checkpoint_every_epochs:
+        periodic_checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     stop_event = threading.Event()
     games_played = _ThreadSafeCounter()
@@ -554,6 +569,22 @@ def train_model(cfg: DictConfig) -> None:
                         f"train_td_loss={best_epoch_loss:.4f}",
                         flush=True,
                     )
+
+                if cfg.train.checkpoint_every_epochs and epoch % cfg.train.checkpoint_every_epochs == 0:
+                    periodic_checkpoint_path = periodic_checkpoint_dir / f"epoch_{epoch:04d}.pt"
+                    torch.save(
+                        {
+                            "model_state_dict": {
+                                key: value.detach().cpu()
+                                for key, value in online_model.state_dict().items()
+                            },
+                            "config": OmegaConf.to_container(cfg, resolve=True),
+                            "epoch": epoch,
+                            "train_td_loss": epoch_metrics["td_loss"],
+                        },
+                        periodic_checkpoint_path,
+                    )
+                    print(f"periodic_checkpoint_saved={periodic_checkpoint_path.resolve()}", flush=True)
         finally:
             stop_event.set()
             actor_thread.join(timeout=30)

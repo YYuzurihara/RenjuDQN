@@ -117,8 +117,17 @@ def evaluate_checkpoint(cfg: DictConfig) -> None:
 
     generator = torch.Generator().manual_seed(cfg.seed)
 
-    dataset = ReplayDataset(cfg.data.path, gamma=cfg.train.gamma, max_rows=cfg.data.max_rows)
-    replay_buffer = ReplayBuffer(capacity=len(dataset), gamma=cfg.train.gamma)
+    dataset = ReplayDataset(
+        cfg.data.path,
+        gamma=cfg.train.gamma,
+        coefficient=cfg.train.reward_shaping_coefficient,
+        max_rows=cfg.data.max_rows,
+    )
+    replay_buffer = ReplayBuffer(
+        capacity=len(dataset),
+        gamma=cfg.train.gamma,
+        coefficient=cfg.train.reward_shaping_coefficient,
+    )
     replay_buffer.warmup_from_dataset(dataset)
 
     td_metrics = evaluate_td_error(

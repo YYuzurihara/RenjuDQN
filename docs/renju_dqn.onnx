@@ -1,6 +1,6 @@
 
-pytorch2.9.0+cu130:∆ôâ
-´
+pytorch2.9.0+cu130:Íôâ
+¨
 state
 stem.0.weight
 stem.0.biasgetitemnode_Conv_187"Conv*
@@ -13,26 +13,26 @@
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJÕ
 pkg.torch.onnx.class_hierarchy™['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J†
 pkg.torch.onnx.fx_nodeÖ%_native_batch_norm_legit_no_training : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d, %p_stem_1_weight, %p_stem_1_bias, %b_stem_1_running_mean, %b_stem_1_running_var, 0.1, 1e-05), kwargs = {})J\
-pkg.torch.onnx.name_scopes>['', 'stem', 'stem.1', '_native_batch_norm_legit_no_training']Jò
-pkg.torch.onnx.stack_trace˘File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 68, in forward
+pkg.torch.onnx.name_scopes>['', 'stem', 'stem.1', '_native_batch_norm_legit_no_training']Jô
+pkg.torch.onnx.stack_trace˙File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 148, in forward
     hidden = self.stem(state)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-ﬂ
+‡
 getitemrelu	node_relu"ReluJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/stem: torch.nn.modules.container.Sequential/stem.2: torch.nn.modules.activation.ReLU/relu: aten.relu.defaultJß
 pkg.torch.onnx.class_hierarchyÑ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
 pkg.torch.onnx.fx_nodej%relu : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem,), kwargs = {})J<
-pkg.torch.onnx.name_scopes['', 'stem', 'stem.2', 'relu']JØ
-pkg.torch.onnx.stack_traceêFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 68, in forward
+pkg.torch.onnx.name_scopes['', 'stem', 'stem.2', 'relu']J∞
+pkg.torch.onnx.stack_traceëFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 148, in forward
     hidden = self.stem(state)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-€
+‹
 relu
 blocks.0.conv1.weight
 blocks.0.conv1.weight_bias	getitem_3node_Conv_189"Conv*
@@ -45,30 +45,30 @@
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_1 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_1, %p_blocks_0_bn1_weight, %p_blocks_0_bn1_bias, %b_blocks_0_bn1_running_mean, %b_blocks_0_bn1_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.0', 'blocks.0.bn1', '_native_batch_norm_legit_no_training_1']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.0', 'blocks.0.bn1', '_native_batch_norm_legit_no_training_1']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-À	
+Ã	
 	getitem_3relu_1node_relu_1"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.0: renju_dqn.model.ResidualBlock/blocks.0.relu: torch.nn.modules.activation.ReLU/relu_1: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
 pkg.torch.onnx.fx_noden%relu_1 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_3,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.0', 'blocks.0.relu', 'relu_1']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.0', 'blocks.0.relu', 'relu_1']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-‘
+’
 relu_1
 blocks.0.conv2.weight
 blocks.0.conv2.weight_bias	getitem_6node_Conv_191"Conv*
@@ -81,43 +81,43 @@
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_2 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_2, %p_blocks_0_bn2_weight, %p_blocks_0_bn2_bias, %b_blocks_0_bn2_running_mean, %b_blocks_0_bn2_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.0', 'blocks.0.bn2', '_native_batch_norm_legit_no_training_2']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.0', 'blocks.0.bn2', '_native_batch_norm_legit_no_training_2']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-±
+≤
 	getitem_6
 reluaddnode_add"AddJô
 	namespaceã: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.0: renju_dqn.model.ResidualBlock/add: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jâ
 pkg.torch.onnx.fx_nodeo%add : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_6, %relu), kwargs = {})J?
-pkg.torch.onnx.name_scopes!['', 'blocks', 'blocks.0', 'add']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes!['', 'blocks', 'blocks.0', 'add']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-∑	
+∏	
 addrelu_2node_relu_2"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.0: renju_dqn.model.ResidualBlock/blocks.0.relu: torch.nn.modules.activation.ReLU/relu_2: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÇ
 pkg.torch.onnx.fx_nodeh%relu_2 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.0', 'blocks.0.relu', 'relu_2']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.0', 'blocks.0.relu', 'relu_2']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-›
+ﬁ
 relu_2
 blocks.1.conv1.weight
 blocks.1.conv1.weight_bias	getitem_9node_Conv_193"Conv*
@@ -130,30 +130,30 @@
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_3 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_3, %p_blocks_1_bn1_weight, %p_blocks_1_bn1_bias, %b_blocks_1_bn1_running_mean, %b_blocks_1_bn1_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.1', 'blocks.1.bn1', '_native_batch_norm_legit_no_training_3']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.1', 'blocks.1.bn1', '_native_batch_norm_legit_no_training_3']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-À	
+Ã	
 	getitem_9relu_3node_relu_3"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.1: renju_dqn.model.ResidualBlock/blocks.1.relu: torch.nn.modules.activation.ReLU/relu_3: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
 pkg.torch.onnx.fx_noden%relu_3 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_9,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.1', 'blocks.1.relu', 'relu_3']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.1', 'blocks.1.relu', 'relu_3']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-’
+÷
 relu_3
 blocks.1.conv2.weight
 blocks.1.conv2.weight_bias
@@ -167,16 +167,16 @@ getitem_12node_Conv_195"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_4 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_4, %p_blocks_1_bn2_weight, %p_blocks_1_bn2_bias, %b_blocks_1_bn2_running_mean, %b_blocks_1_bn2_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.1', 'blocks.1.bn2', '_native_batch_norm_legit_no_training_4']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.1', 'blocks.1.bn2', '_native_batch_norm_legit_no_training_4']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-¡
+¬
 
 getitem_12
 relu_2add_1
@@ -184,28 +184,28 @@ node_add_1"AddJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.1: renju_dqn.model.ResidualBlock/add_1: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jé
 pkg.torch.onnx.fx_nodet%add_1 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_12, %relu_2), kwargs = {})JA
-pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.1', 'add_1']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.1', 'add_1']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-ª	
+º	
 add_1relu_4node_relu_4"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.1: renju_dqn.model.ResidualBlock/blocks.1.relu: torch.nn.modules.activation.ReLU/relu_4: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
 pkg.torch.onnx.fx_nodej%relu_4 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_1,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.1', 'blocks.1.relu', 'relu_4']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.1', 'blocks.1.relu', 'relu_4']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-ﬁ
+ﬂ
 relu_4
 blocks.2.conv1.weight
 blocks.2.conv1.weight_bias
@@ -219,31 +219,31 @@ getitem_15node_Conv_197"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_5 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_5, %p_blocks_2_bn1_weight, %p_blocks_2_bn1_bias, %b_blocks_2_bn1_running_mean, %b_blocks_2_bn1_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.2', 'blocks.2.bn1', '_native_batch_norm_legit_no_training_5']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.2', 'blocks.2.bn1', '_native_batch_norm_legit_no_training_5']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-Õ	
+Œ	
 
 getitem_15relu_5node_relu_5"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.2: renju_dqn.model.ResidualBlock/blocks.2.relu: torch.nn.modules.activation.ReLU/relu_5: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
 pkg.torch.onnx.fx_nodeo%relu_5 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_15,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.2', 'blocks.2.relu', 'relu_5']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.2', 'blocks.2.relu', 'relu_5']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-’
+÷
 relu_5
 blocks.2.conv2.weight
 blocks.2.conv2.weight_bias
@@ -257,16 +257,16 @@ getitem_18node_Conv_199"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_6 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_6, %p_blocks_2_bn2_weight, %p_blocks_2_bn2_bias, %b_blocks_2_bn2_running_mean, %b_blocks_2_bn2_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.2', 'blocks.2.bn2', '_native_batch_norm_legit_no_training_6']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.2', 'blocks.2.bn2', '_native_batch_norm_legit_no_training_6']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-¡
+¬
 
 getitem_18
 relu_4add_2
@@ -274,28 +274,28 @@ node_add_2"AddJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.2: renju_dqn.model.ResidualBlock/add_2: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jé
 pkg.torch.onnx.fx_nodet%add_2 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_18, %relu_4), kwargs = {})JA
-pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.2', 'add_2']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.2', 'add_2']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-ª	
+º	
 add_2relu_6node_relu_6"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.2: renju_dqn.model.ResidualBlock/blocks.2.relu: torch.nn.modules.activation.ReLU/relu_6: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
 pkg.torch.onnx.fx_nodej%relu_6 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_2,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.2', 'blocks.2.relu', 'relu_6']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.2', 'blocks.2.relu', 'relu_6']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-ﬁ
+ﬂ
 relu_6
 blocks.3.conv1.weight
 blocks.3.conv1.weight_bias
@@ -309,31 +309,31 @@ getitem_21node_Conv_201"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_7 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_7, %p_blocks_3_bn1_weight, %p_blocks_3_bn1_bias, %b_blocks_3_bn1_running_mean, %b_blocks_3_bn1_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.3', 'blocks.3.bn1', '_native_batch_norm_legit_no_training_7']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.3', 'blocks.3.bn1', '_native_batch_norm_legit_no_training_7']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-Õ	
+Œ	
 
 getitem_21relu_7node_relu_7"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.3: renju_dqn.model.ResidualBlock/blocks.3.relu: torch.nn.modules.activation.ReLU/relu_7: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
 pkg.torch.onnx.fx_nodeo%relu_7 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_21,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.3', 'blocks.3.relu', 'relu_7']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.3', 'blocks.3.relu', 'relu_7']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-’
+÷
 relu_7
 blocks.3.conv2.weight
 blocks.3.conv2.weight_bias
@@ -347,16 +347,16 @@ getitem_24node_Conv_203"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_8 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_8, %p_blocks_3_bn2_weight, %p_blocks_3_bn2_bias, %b_blocks_3_bn2_running_mean, %b_blocks_3_bn2_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.3', 'blocks.3.bn2', '_native_batch_norm_legit_no_training_8']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.3', 'blocks.3.bn2', '_native_batch_norm_legit_no_training_8']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-¡
+¬
 
 getitem_24
 relu_6add_3
@@ -364,28 +364,28 @@ node_add_3"AddJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.3: renju_dqn.model.ResidualBlock/add_3: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jé
 pkg.torch.onnx.fx_nodet%add_3 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_24, %relu_6), kwargs = {})JA
-pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.3', 'add_3']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.3', 'add_3']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-ª	
+º	
 add_3relu_8node_relu_8"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.3: renju_dqn.model.ResidualBlock/blocks.3.relu: torch.nn.modules.activation.ReLU/relu_8: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
 pkg.torch.onnx.fx_nodej%relu_8 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_3,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.3', 'blocks.3.relu', 'relu_8']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.3', 'blocks.3.relu', 'relu_8']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-ﬁ
+ﬂ
 relu_8
 blocks.4.conv1.weight
 blocks.4.conv1.weight_bias
@@ -399,31 +399,31 @@ getitem_27node_Conv_205"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training_9 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_9, %p_blocks_4_bn1_weight, %p_blocks_4_bn1_bias, %b_blocks_4_bn1_running_mean, %b_blocks_4_bn1_running_var, 0.1, 1e-05), kwargs = {})Jr
-pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.4', 'blocks.4.bn1', '_native_batch_norm_legit_no_training_9']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesT['', 'blocks', 'blocks.4', 'blocks.4.bn1', '_native_batch_norm_legit_no_training_9']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-Õ	
+Œ	
 
 getitem_27relu_9node_relu_9"ReluJŒ
 	namespace¿: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.4: renju_dqn.model.ResidualBlock/blocks.4.relu: torch.nn.modules.activation.ReLU/relu_9: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
 pkg.torch.onnx.fx_nodeo%relu_9 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_27,), kwargs = {})JS
-pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.4', 'blocks.4.relu', 'relu_9']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes5['', 'blocks', 'blocks.4', 'blocks.4.relu', 'relu_9']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-Ÿ
+⁄
 relu_9
 blocks.4.conv2.weight
 blocks.4.conv2.weight_bias
@@ -437,16 +437,16 @@ getitem_30node_Conv_207"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jæ
 pkg.torch.onnx.fx_node£%_native_batch_norm_legit_no_training_10 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_10, %p_blocks_4_bn2_weight, %p_blocks_4_bn2_bias, %b_blocks_4_bn2_running_mean, %b_blocks_4_bn2_running_var, 0.1, 1e-05), kwargs = {})Js
-pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.4', 'blocks.4.bn2', '_native_batch_norm_legit_no_training_10']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.4', 'blocks.4.bn2', '_native_batch_norm_legit_no_training_10']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-¡
+¬
 
 getitem_30
 relu_8add_4
@@ -454,28 +454,28 @@ node_add_4"AddJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.4: renju_dqn.model.ResidualBlock/add_4: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jé
 pkg.torch.onnx.fx_nodet%add_4 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_30, %relu_8), kwargs = {})JA
-pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.4', 'add_4']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.4', 'add_4']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-¿	
+¡	
 add_4relu_10node_relu_10"ReluJœ
 	namespace¡: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.4: renju_dqn.model.ResidualBlock/blocks.4.relu: torch.nn.modules.activation.ReLU/relu_10: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÖ
 pkg.torch.onnx.fx_nodek%relu_10 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_4,), kwargs = {})JT
-pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.4', 'blocks.4.relu', 'relu_10']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.4', 'blocks.4.relu', 'relu_10']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-„
+‰
 relu_10
 blocks.5.conv1.weight
 blocks.5.conv1.weight_bias
@@ -489,31 +489,31 @@ getitem_33node_Conv_209"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jæ
 pkg.torch.onnx.fx_node£%_native_batch_norm_legit_no_training_11 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_11, %p_blocks_5_bn1_weight, %p_blocks_5_bn1_bias, %b_blocks_5_bn1_running_mean, %b_blocks_5_bn1_running_var, 0.1, 1e-05), kwargs = {})Js
-pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.5', 'blocks.5.bn1', '_native_batch_norm_legit_no_training_11']Jè
-pkg.torch.onnx.stack_traceFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.5', 'blocks.5.bn1', '_native_batch_norm_legit_no_training_11']Jê
+pkg.torch.onnx.stack_traceÒFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-“	
+”	
 
 getitem_33relu_11node_relu_11"ReluJœ
 	namespace¡: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.5: renju_dqn.model.ResidualBlock/blocks.5.relu: torch.nn.modules.activation.ReLU/relu_11: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
 pkg.torch.onnx.fx_nodep%relu_11 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_33,), kwargs = {})JT
-pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.5', 'blocks.5.relu', 'relu_11']J¶
-pkg.torch.onnx.stack_traceáFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.5', 'blocks.5.relu', 'relu_11']Jß
+pkg.torch.onnx.stack_traceàFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 22, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 81, in forward
     out = self.relu(self.bn1(self.conv1(x)))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-⁄
+€
 relu_11
 blocks.5.conv2.weight
 blocks.5.conv2.weight_bias
@@ -527,16 +527,16 @@ getitem_36node_Conv_211"Conv*
 !pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJÓ
 pkg.torch.onnx.class_hierarchyÀ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jæ
 pkg.torch.onnx.fx_node£%_native_batch_norm_legit_no_training_12 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_12, %p_blocks_5_bn2_weight, %p_blocks_5_bn2_bias, %b_blocks_5_bn2_running_mean, %b_blocks_5_bn2_running_var, 0.1, 1e-05), kwargs = {})Js
-pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.5', 'blocks.5.bn2', '_native_batch_norm_legit_no_training_12']JÜ
-pkg.torch.onnx.stack_traceÁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopesU['', 'blocks', 'blocks.5', 'blocks.5.bn2', '_native_batch_norm_legit_no_training_12']Já
+pkg.torch.onnx.stack_traceËFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 23, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 82, in forward
     out = self.bn2(self.conv2(out))
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-√
+ƒ
 
 getitem_36
 relu_10add_5
@@ -544,28 +544,28 @@ node_add_5"AddJõ
 	namespaceç: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.5: renju_dqn.model.ResidualBlock/add_5: aten.add.TensorJ°
 pkg.torch.onnx.class_hierarchy['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'aten.add.Tensor']Jè
 pkg.torch.onnx.fx_nodeu%add_5 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%getitem_36, %relu_10), kwargs = {})JA
-pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.5', 'add_5']J¸
-pkg.torch.onnx.stack_trace›File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes#['', 'blocks', 'blocks.5', 'add_5']J˝
+pkg.torch.onnx.stack_traceﬁFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
-¿	
+¡	
 add_5relu_12node_relu_12"ReluJœ
 	namespace¡: renju_dqn.model.RenjuResNetDQN/blocks: torch.nn.modules.container.Sequential/blocks.5: renju_dqn.model.ResidualBlock/blocks.5.relu: torch.nn.modules.activation.ReLU/relu_12: aten.relu.defaultJ»
 pkg.torch.onnx.class_hierarchy•['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'renju_dqn.model.ResidualBlock', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÖ
 pkg.torch.onnx.fx_nodek%relu_12 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%add_5,), kwargs = {})JT
-pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.5', 'blocks.5.relu', 'relu_12']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 69, in forward
+pkg.torch.onnx.name_scopes6['', 'blocks', 'blocks.5', 'blocks.5.relu', 'relu_12']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 149, in forward
     hidden = self.blocks(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
-  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 24, in forward
+  File "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 83, in forward
     return self.relu(out + residual)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-Ù
+ı
 relu_12
 head_conv.0.weight
 head_conv.0.bias
@@ -579,39 +579,39 @@ getitem_39node_Conv_212"Conv*
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJÕ
 pkg.torch.onnx.class_hierarchy™['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∫
 pkg.torch.onnx.fx_nodeü%_native_batch_norm_legit_no_training_13 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_13, %p_head_conv_1_weight, %p_head_conv_1_bias, %b_head_conv_1_running_mean, %b_head_conv_1_running_var, 0.1, 1e-05), kwargs = {})Ji
-pkg.torch.onnx.name_scopesK['', 'head_conv', 'head_conv.1', '_native_batch_norm_legit_no_training_13']Jû
-pkg.torch.onnx.stack_traceˇFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 70, in forward
+pkg.torch.onnx.name_scopesK['', 'head_conv', 'head_conv.1', '_native_batch_norm_legit_no_training_13']Jü
+pkg.torch.onnx.stack_traceÄFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 150, in forward
     hidden = self.head_conv(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/batchnorm.py", line 193, in forward
     return F.batch_norm(
-é
+è
 
 getitem_39relu_13node_relu_13"ReluJ®
 	namespaceö: renju_dqn.model.RenjuResNetDQN/head_conv: torch.nn.modules.container.Sequential/head_conv.2: torch.nn.modules.activation.ReLU/relu_13: aten.relu.defaultJß
 pkg.torch.onnx.class_hierarchyÑ['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
 pkg.torch.onnx.fx_nodep%relu_13 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_39,), kwargs = {})JI
-pkg.torch.onnx.name_scopes+['', 'head_conv', 'head_conv.2', 'relu_13']Jµ
-pkg.torch.onnx.stack_traceñFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 70, in forward
+pkg.torch.onnx.name_scopes+['', 'head_conv', 'head_conv.2', 'relu_13']J∂
+pkg.torch.onnx.stack_traceóFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 150, in forward
     hidden = self.head_conv(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 250, in forward
     input = module(input)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/activation.py", line 144, in forward
     return F.relu(input, inplace=self.inplace)
-†
+°
 relu_13
 val_150view_1node_view_1"Reshape*
 	allowzero†Jn
 	namespacea: renju_dqn.model.RenjuResNetDQN/q_head: torch.nn.modules.linear.Linear/view_1: aten.view.defaultJ{
 pkg.torch.onnx.class_hierarchyY['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.linear.Linear', 'aten.view.default']Jè
 pkg.torch.onnx.fx_nodeu%view_1 : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%relu_13, [1, 450]), kwargs = {})J6
-pkg.torch.onnx.name_scopes['', 'q_head', 'view_1']J§
-pkg.torch.onnx.stack_traceÖFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 77, in forward
+pkg.torch.onnx.name_scopes['', 'q_head', 'view_1']J•
+pkg.torch.onnx.stack_traceÜFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 157, in forward
     return self.q_head(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
-¸
+˝
 view_1
 q_head.weight
 q_head.biasq_valuesnode_linear"Gemm*
@@ -622,8 +622,8 @@ getitem_39relu_13node_relu_13"ReluJ®
 	namespacec: renju_dqn.model.RenjuResNetDQN/q_head: torch.nn.modules.linear.Linear/linear: aten.linear.defaultJ}
 pkg.torch.onnx.class_hierarchy[['renju_dqn.model.RenjuResNetDQN', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J©
 pkg.torch.onnx.fx_nodeé%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%view_1, %p_q_head_weight, %p_q_head_bias), kwargs = {})J6
-pkg.torch.onnx.name_scopes['', 'q_head', 'linear']J§
-pkg.torch.onnx.stack_traceÖFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 77, in forward
+pkg.torch.onnx.name_scopes['', 'q_head', 'linear']J•
+pkg.torch.onnx.stack_traceÜFile "/home/yz/RenjuDQN/src/renju_dqn/model.py", line 157, in forward
     return self.q_head(hidden)
   File "/home/yz/RenjuDQN/.venv/lib/python3.13/site-packages/torch/nn/modules/linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)

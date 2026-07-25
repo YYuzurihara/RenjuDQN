@@ -11,6 +11,9 @@ log_every_steps: 20
 
 # DQN
 gamma: 0.99
+reward_shaping_coefficient: 0.0 # weight on the potential-based shaping term added to the
+# sparse terminal reward (see reward.py); set to 0 to disable shaping and train on the sparse
+# +-1/0 terminal reward alone.
 double_dqn: false # if true, the online network selects the next action and the target network
 # only evaluates it (Double DQN), instead of the target network doing both (vanilla DQN), which
 # curbs max-Q overestimation bias.
@@ -27,7 +30,7 @@ max_games_per_epoch: 1000 # cap on self-play games per epoch; once reached, the 
 # not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead.
 prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
 
-exploration: epsilon_greedy # epsilon_greedy or noisy_net.
+exploration: noisy_net # epsilon_greedy or noisy_net.
 # epsilon_greedy: self-play picks a uniformly random legal move with probability epsilon
 # (annealed below), otherwise the greedy argmax move.
 # noisy_net: the model's output head uses NoisyLinear (Fortunato et al., 2018) instead of
@@ -49,3 +52,8 @@ epsilon_end: 0.1
 # Set curriculum_step_size to 0 to disable and always sample from the full buffer.
 curriculum_step_size: 5
 curriculum_epoch_interval: 1
+
+checkpoint_every_epochs: 5 # in addition to best_model.pt (see is_best in train.py), also save a
+# separate, epoch-indexed checkpoint every N epochs under checkpoint_dir/<run_name>/, so a
+# specific epoch's weights can be inspected/exported later regardless of how best_model.pt was
+# picked. Set to 0 to disable.

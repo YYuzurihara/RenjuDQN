@@ -63,6 +63,7 @@
       p,
       label,
       input,
+      select,
       textarea,
       button,
       pre {
@@ -88,6 +89,7 @@
       }
 
       input,
+      select,
       textarea {
         width: 100%;
         padding: 12px 14px;
@@ -373,6 +375,13 @@
             <div class="stat" id="ai-status">AI: まだ着手していません</div>
             <div class="stat" id="reward-status">報酬: まだ手がありません</div>
           </div>
+          <div class="field">
+            <label for="human-color" data-i18n="humanColorLabel">あなたの手番</label>
+            <select id="human-color">
+              <option value="black" data-i18n="humanColorBlackOption">黒(先手)</option>
+              <option value="white" data-i18n="humanColorWhiteOption">白(後手)</option>
+            </select>
+          </div>
           <div class="actions">
             <button id="new-game" type="button" data-i18n="newGameButton">新しい対局</button>
             <button id="ai-move" type="button" class="secondary" data-i18n="aiMoveButton">
@@ -464,6 +473,7 @@
       const fillEmptyButton = document.querySelector("#fill-empty");
       const newGameButton = document.querySelector("#new-game");
       const aiMoveButton = document.querySelector("#ai-move");
+      const humanColorSelect = document.querySelector("#human-color");
       const rewardShapingToggleButton = document.querySelector("#reward-shaping-toggle");
       const statusNode = document.querySelector("#status");
       const boardInfoNode = document.querySelector("#board-info");
@@ -503,6 +513,9 @@
           draw: "引き分け",
           fillEmptyButton: "空盤面を入れる",
           gameStatus: ({message}) => `状態: ${message}`,
+          humanColorBlackOption: "黒(先手)",
+          humanColorLabel: "あなたの手番",
+          humanColorWhiteOption: "白(後手)",
           illegalMove: ({coord}) => `そこには打てません: ${coord}`,
           inferenceComplete: ({index}) => `推論完了: predicted_index=${index}`,
           inferenceFailed: ({message}) => `推論失敗: ${message}`,
@@ -577,6 +590,9 @@
           draw: "Draw",
           fillEmptyButton: "Fill empty board",
           gameStatus: ({message}) => `Status: ${message}`,
+          humanColorBlackOption: "Black (first)",
+          humanColorLabel: "Your color",
+          humanColorWhiteOption: "White (second)",
           illegalMove: ({coord}) => `Illegal move: ${coord}`,
           inferenceComplete: ({index}) => `Inference complete: predicted_index=${index}`,
           inferenceFailed: ({message}) => `Inference failed: ${message}`,
@@ -652,6 +668,11 @@
 
       let loaded = null;
       let rewardShapingEnabled = true;
+      let humanPlayer = BLACK;
+
+      function aiPlayer() {
+        return humanPlayer === BLACK ? WHITE : BLACK;
+      }
       const gameState = {
         board: new Array(225).fill(0),
         busy: false,
@@ -685,7 +706,7 @@
       }
 
       function actorName(player) {
-        return player === BLACK ? t("you") : t("ai");
+        return player === humanPlayer ? t("you") : t("ai");
       }
 
       function renderLanguageToggle() {
@@ -982,6 +1003,13 @@
         setTranslatedResult("resultIdle");
       }
 
+      async function startNewGame() {
+        resetGame();
+        if (aiPlayer() === BLACK) {
+          await runAiMove();
+        }
+      }
+
       async function ensureLoaded() {
         if (loaded) {
           return loaded;
@@ -1005,7 +1033,8 @@
         if (gameState.busy || gameState.over) {
           return;
         }
-        if (currentPlayer() !== WHITE) {
+        const currentAiPlayer = aiPlayer();
+        if (currentPlayer() !== currentAiPlayer) {
           setStatus("notAiTurn");
           return;
         }
@@ -1018,20 +1047,20 @@
           const prediction = await predictBoard(
             session,
             gameState.board,
-            WHITE,
+            currentAiPlayer,
             aiLastMoveIndex,
             metadata,
             {topK: 5, applyLegalMask: true},
           );
           const aiIndex = prediction.predictedIndex;
           const prevBoard = gameState.board.slice();
-          gameState.board[aiIndex] = WHITE;
+          gameState.board[aiIndex] = currentAiPlayer;
           gameState.lastMoveIndex = aiIndex;
           const qValue = prediction.predictedQValue.toFixed(4);
-          const reward = recordMoveReward(prevBoard, WHITE, aiIndex);
+          const reward = recordMoveReward(prevBoard, currentAiPlayer, aiIndex);
           gameState.moveLog.push({
             index: aiIndex,
-            player: WHITE,
+            player: currentAiPlayer,
             qValue,
             reward: formatReward(reward),
           });
@@ -1058,7 +1087,7 @@
         if (gameState.busy || gameState.over) {
           return;
         }
-        if (currentPlayer() !== BLACK) {
+        if (currentPlayer() !== humanPlayer) {
           setStatus("notHumanTurn");
           return;
         }
@@ -1068,10 +1097,10 @@
           return;
         }
         const prevBoard = gameState.board.slice();
-        gameState.board[index] = BLACK;
+        gameState.board[index] = humanPlayer;
         gameState.lastMoveIndex = index;
-        const reward = recordMoveReward(prevBoard, BLACK, index);
-        gameState.moveLog.push({index, player: BLACK, reward: formatReward(reward)});
+        const reward = recordMoveReward(prevBoard, humanPlayer, index);
+        gameState.moveLog.push({index, player: humanPlayer, reward: formatReward(reward)});
         setAiStatus("aiAfterHumanMove");
         refreshGameSummary("aiTurn");
         if (evaluateBoardAfterMove()) {
@@ -1120,8 +1149,12 @@
         resetGame();
       });
 
-      newGameButton.addEventListener("click", resetGame);
+      newGameButton.addEventListener("click", startNewGame);
       aiMoveButton.addEventListener("click", runAiMove);
+      humanColorSelect.addEventListener("change", () => {
+        humanPlayer = humanColorSelect.value === "white" ? WHITE : BLACK;
+        startNewGame();
+      });
       rewardShapingToggleButton.addEventListener("click", () => {
         rewardShapingEnabled = !rewardShapingEnabled;
         renderRewardShapingToggle();
@@ -1137,8 +1170,8 @@
         syncGameFromTextarea();
       });
       boardCsvInput.value = createEmptyBoardCsv();
-      resetGame();
       applyLanguage(currentLanguage);
+      startNewGame();
     </script>
   </body>
 </html>

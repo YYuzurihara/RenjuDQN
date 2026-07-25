@@ -40,6 +40,7 @@ def build_model(cfg: DictConfig) -> RenjuResNetDQN:
         head_channels=cfg.model.head_channels,
         num_move_labels=cfg.model.num_move_labels,
         dueling=cfg.model.dueling,
+        noisy=cfg.train.exploration == "noisy_net",
     )
 
 
@@ -122,6 +123,37 @@ def make_epsilon_greedy_policy(
     return select_move
 
 
+def make_noisy_net_policy(
+    model: RenjuResNetDQN,
+    device: torch.device,
+    model_lock: threading.Lock | None = None,
+) -> SelectMove:
+    """Build a `select_move` callback that always plays the greedy argmax move, relying on
+    `model`'s NoisyLinear head (see model.py) for exploration instead of epsilon-greedy
+    randomness. Resamples the noise before every move so each decision sees a fresh sample.
+    """
+
+    def select_move(board: list[int], player: int, prev_move: int | None, mask: list[bool]) -> int:
+        state = encode_board(board, player, prev_move).unsqueeze(0).to(device)
+        legal_mask_tensor = torch.tensor(mask, dtype=torch.bool, device=device)
+        # eval() for batchnorm's benefit (single-sample inference), but the noisy head's
+        # own noise still needs to be switched on -- that's exploration here, not epsilon.
+        model.eval()
+        model.set_noise_training(True)
+        with torch.no_grad():
+            if model_lock is not None:
+                with model_lock:
+                    model.reset_noise()
+                    q_values = model(state).squeeze(0)
+            else:
+                model.reset_noise()
+                q_values = model(state).squeeze(0)
+        q_values = q_values.masked_fill(~legal_mask_tensor, float("-inf"))
+        return int(q_values.argmax().item())
+
+    return select_move
+
+
 class _SharedValue:
     """A value shared between threads (epsilon, curriculum window), written once per epoch by
     the learner and read by the actor/prefetch threads.
@@ -160,13 +192,14 @@ class _ThreadSafeCounter:
 def self_play_worker(
     stop_event: threading.Event,
     epsilon_box: _SharedValue,
-    target_model: nn.Module,
+    target_model: RenjuResNetDQN,
     model_lock: threading.Lock,
     device: torch.device,
     replay_buffer: ReplayBuffer,
     generator: torch.Generator,
     games_played: _ThreadSafeCounter,
     games_budget_box: _SharedValue,
+    exploration: str,
 ) -> None:
     """Actor loop: self-plays against `target_model` and pushes finished games into
     `replay_buffer` until `stop_event` is set. Runs on its own thread so it can overlap with
@@ -183,15 +216,22 @@ def self_play_worker(
     state-action distribution -- drifts with however fast this thread happens to run relative to
     the learner. Once the epoch's budget is used up, this thread idles until the next epoch
     raises it.
+
+    `exploration` selects how moves are picked: "epsilon_greedy" mixes in uniformly random
+    legal moves per `epsilon_box`; "noisy_net" always plays greedy against `target_model`'s
+    NoisyLinear head, which is resampled before every move instead.
     """
     while not stop_event.is_set():
         epoch_start_games, max_games_per_epoch = games_budget_box.get()
         if max_games_per_epoch is not None and games_played.value - epoch_start_games >= max_games_per_epoch:
             stop_event.wait(0.05)
             continue
-        select_move = make_epsilon_greedy_policy(
-            target_model, device, epsilon_box.get(), generator, model_lock=model_lock
-        )
+        if exploration == "noisy_net":
+            select_move = make_noisy_net_policy(target_model, device, model_lock=model_lock)
+        else:
+            select_move = make_epsilon_greedy_policy(
+                target_model, device, epsilon_box.get(), generator, model_lock=model_lock
+            )
         rows, winner = play_self_play_game(select_move)
         replay_buffer.push_game(rows, winner)
         games_played.increment()
@@ -237,8 +277,8 @@ Batch = tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tens
 
 
 def dqn_update(
-    online_model: nn.Module,
-    target_model: nn.Module,
+    online_model: RenjuResNetDQN,
+    target_model: RenjuResNetDQN,
     optimizer: torch.optim.Optimizer,
     criterion: nn.Module,
     batch: Batch,
@@ -252,8 +292,16 @@ def dqn_update(
     `double_dqn` switches the bootstrap target from vanilla DQN -- `target_model` both selects
     and evaluates the next action, which is prone to max-Q overestimation bias -- to Double DQN,
     where `online_model` selects the next action and `target_model` only evaluates it.
+
+    Resamples `online_model`'s NoisyLinear noise once per step (a no-op if it has none), shared
+    across its two forward calls below. `target_model` stays in eval() for its whole lifetime
+    (see train_model), so its NoisyLinear head -- if any -- always uses its mean weights: a
+    deterministic bootstrap target is more stable than one perturbed by the target network's
+    own noise.
     """
     state, action, reward, next_state, done, next_legal_mask = batch
+
+    online_model.reset_noise()
 
     with torch.no_grad():
         next_q_target = target_model(next_state)
@@ -287,6 +335,9 @@ def dqn_update(
 
 
 def train_model(cfg: DictConfig) -> None:
+    if cfg.train.exploration not in ("epsilon_greedy", "noisy_net"):
+        raise ValueError(f"Unsupported exploration strategy: {cfg.train.exploration}")
+
     set_seed(cfg.seed)
     device = select_device(cfg.train.device)
     # Each thread that samples/self-plays gets its own generator: torch.Generator isn't
@@ -360,6 +411,7 @@ def train_model(cfg: DictConfig) -> None:
             actor_generator,
             games_played,
             games_budget_box,
+            cfg.train.exploration,
         ),
         name="self-play-actor",
         daemon=True,
@@ -447,14 +499,19 @@ def train_model(cfg: DictConfig) -> None:
                     if global_step % cfg.train.log_every_steps == 0:
                         mlflow.log_metric("train_step_td_loss", loss, step=global_step)
                         mlflow.log_metric("train_step_mean_q", mean_q, step=global_step)
-                        mlflow.log_metric("epsilon", epsilon, step=global_step)
+                        if cfg.train.exploration == "epsilon_greedy":
+                            mlflow.log_metric("epsilon", epsilon, step=global_step)
 
                     epoch_progress.set_postfix(
                         td_loss=f"{epoch_loss_total / epoch_updates:.4f}",
                         mean_q=f"{epoch_q_total / epoch_updates:.4f}",
                         buffer=len(replay_buffer),
                         games=games_played.value,
-                        epsilon=f"{epsilon:.3f}",
+                        **(
+                            {"epsilon": f"{epsilon:.3f}"}
+                            if cfg.train.exploration == "epsilon_greedy"
+                            else {"exploration": "noisy_net"}
+                        ),
                     )
 
                 epoch_progress.close()

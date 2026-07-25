@@ -26,6 +26,14 @@ max_games_per_epoch: 1000 # cap on self-play games per epoch; once reached, the 
 # drifts with however fast that thread happens to run relative to the learner (hardware-dependent,
 # not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead.
 prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
+
+exploration: epsilon_greedy # epsilon_greedy or noisy_net.
+# epsilon_greedy: self-play picks a uniformly random legal move with probability epsilon
+# (annealed below), otherwise the greedy argmax move.
+# noisy_net: the model's output head uses NoisyLinear (Fortunato et al., 2018) instead of
+# plain Linear layers, so the network's own weight noise drives exploration; self-play always
+# plays the greedy argmax move and resamples the noise before each one. epsilon_start/epsilon_end
+# are ignored in this mode.
 epsilon_start: 1.0
 epsilon_end: 0.1
 # epsilon is annealed by curriculum progress rather than a step count (see

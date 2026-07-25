@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from .board_encoder import encode_board, encode_legal_move_mask
 from .model import RenjuResNetDQN
@@ -37,8 +37,10 @@ def build_model_from_checkpoint(
     checkpoint_config = checkpoint.get("config")
     if checkpoint_config is not None:
         model_cfg = checkpoint_config["model"]
+        exploration = checkpoint_config.get("train", {}).get("exploration", "epsilon_greedy")
     elif fallback_cfg is not None:
         model_cfg = fallback_cfg.model
+        exploration = OmegaConf.select(fallback_cfg, "train.exploration", default="epsilon_greedy")
     else:
         raise ValueError("Checkpoint has no embedded config and no fallback_cfg was given.")
 
@@ -49,6 +51,7 @@ def build_model_from_checkpoint(
         head_channels=model_cfg["head_channels"],
         num_move_labels=model_cfg["num_move_labels"],
         dueling=model_cfg["dueling"],
+        noisy=exploration == "noisy_net",
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     return model

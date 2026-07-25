@@ -26,7 +26,7 @@ def stone_threat_score(board: list[int], index: int, player: int) -> int:
     return FOUR_WEIGHT * fours + OPEN_THREE_WEIGHT * open_threes
 
 
-def board_potential(board: list[int], player: int) -> float:
+def _board_potential_python(board: list[int], player: int) -> float:
     """Raw Phi(s), signed from `player`'s perspective (own threats minus opponent's)."""
     opponent = WHITE if player == BLACK else BLACK
     own_score = sum(
@@ -42,15 +42,77 @@ def board_potential(board: list[int], player: int) -> float:
     return float(own_score - opponent_score)
 
 
-def normalized_potential(board: list[int], player: int, scale: float = POTENTIAL_SCALE) -> float:
-    """Phi(s) squashed to (-1, 1) so shaping stays small relative to the +-1 terminal reward."""
-    return math.tanh(board_potential(board, player) / scale)
+def _normalized_potential_python(
+    board: list[int], player: int, scale: float = POTENTIAL_SCALE
+) -> float:
+    return math.tanh(_board_potential_python(board, player) / scale)
 
 
 def terminal_reward(player: int, winner: int) -> float:
     if winner == DRAW:
         return 0.0
     return 1.0 if winner == player else -1.0
+
+
+def _compute_reward_python(
+    board: list[int],
+    next_board: list[int],
+    player: int,
+    winner: int,
+    done: bool,
+    gamma: float,
+    coefficient: float = DEFAULT_SHAPING_COEFFICIENT,
+    scale: float = POTENTIAL_SCALE,
+) -> float:
+    sparse = terminal_reward(player, winner) if done else 0.0
+    phi_t = _normalized_potential_python(board, player, scale)
+    phi_next = 0.0 if done else _normalized_potential_python(next_board, player, scale)
+    return sparse + coefficient * (gamma * phi_next - phi_t)
+
+
+def _compute_rewards_batch_python(
+    boards: list[list[int]],
+    next_boards: list[list[int]],
+    players: list[int],
+    winners: list[int],
+    dones: list[bool],
+    gamma: float,
+    coefficient: float = DEFAULT_SHAPING_COEFFICIENT,
+    scale: float = POTENTIAL_SCALE,
+) -> list[float]:
+    return [
+        _compute_reward_python(board, next_board, player, winner, done, gamma, coefficient, scale)
+        for board, next_board, player, winner, done in zip(
+            boards, next_boards, players, winners, dones
+        )
+    ]
+
+
+# --- Native (pybind11) dispatch -----------------------------------------------------
+#
+# board_potential is O(stones-on-board) -- the hottest path in replay_buffer._encode_batch,
+# called once per transition in a training batch -- so it's also implemented in
+# `native/rules_native.cpp`, which computes an entire board (or batch of boards, via
+# compute_rewards_batch) per Python<->native call instead of once per stone. The functions
+# below route to it when the extension is built, and stay on the pure-Python path above
+# otherwise.
+try:
+    from . import _rules_native as _native
+except ImportError:
+    _native = None
+
+
+def board_potential(board: list[int], player: int) -> float:
+    if _native is not None:
+        return _native.board_potential(board, player)
+    return _board_potential_python(board, player)
+
+
+def normalized_potential(board: list[int], player: int, scale: float = POTENTIAL_SCALE) -> float:
+    """Phi(s) squashed to (-1, 1) so shaping stays small relative to the +-1 terminal reward."""
+    if _native is not None:
+        return _native.normalized_potential(board, player, scale)
+    return _normalized_potential_python(board, player, scale)
 
 
 def compute_reward(
@@ -69,7 +131,31 @@ def compute_reward(
     and Phi(s_{t+1}) is fixed at 0 for the terminal state (required for the shaping
     theorem's policy-invariance guarantee to hold).
     """
-    sparse = terminal_reward(player, winner) if done else 0.0
-    phi_t = normalized_potential(board, player, scale)
-    phi_next = 0.0 if done else normalized_potential(next_board, player, scale)
-    return sparse + coefficient * (gamma * phi_next - phi_t)
+    if _native is not None:
+        return _native.compute_reward(
+            board, next_board, player, winner, done, gamma, coefficient, scale
+        )
+    return _compute_reward_python(board, next_board, player, winner, done, gamma, coefficient, scale)
+
+
+def compute_rewards_batch(
+    boards: list[list[int]],
+    next_boards: list[list[int]],
+    players: list[int],
+    winners: list[int],
+    dones: list[bool],
+    gamma: float,
+    coefficient: float = DEFAULT_SHAPING_COEFFICIENT,
+    scale: float = POTENTIAL_SCALE,
+) -> list[float]:
+    """Batched form of `compute_reward`: one Python<->native call for the whole batch instead
+    of one per transition.
+    """
+    if _native is not None:
+        return _native.compute_rewards_batch(
+            list(boards), list(next_boards), list(players), list(winners), list(dones),
+            gamma, coefficient, scale,
+        )
+    return _compute_rewards_batch_python(
+        boards, next_boards, players, winners, dones, gamma, coefficient, scale
+    )

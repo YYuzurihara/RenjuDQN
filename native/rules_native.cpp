@@ -6,6 +6,7 @@
 #include <pybind11/stl.h>
 
 #include <array>
+#include <cmath>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -188,30 +189,48 @@ int infer_player(const Board& board) {
     );
 }
 
-bool is_forbidden_for_black(const Board& board, int index) {
-    if (board[index] != EMPTY) return true;
-
-    auto [black_count, white_count] = stone_counts(board);
-    int move_number = black_count + white_count;
+// `board[index]` must already be EMPTY. Mutates `board` transiently (sets `index` to BLACK to
+// probe, then restores it) instead of copying, and takes `move_number` precomputed by the
+// caller instead of rescanning all 225 cells -- both are invariant across every candidate index
+// checked for the same board, so hoisting them out of the per-candidate work matters a lot once
+// this runs once per empty cell (legal_move_mask below checks up to ~BOARD_CELLS candidates).
+bool is_forbidden_for_black_impl(Board& board, int index, int move_number) {
     if (move_number == 0) return index != CENTER_INDEX;
 
-    Board next_board = board;
-    next_board[index] = BLACK;
-    if (is_overline(next_board, index, BLACK)) return true;
-    if (count_four_directions_impl(next_board, index, BLACK) >= 2) return true;
-    if (count_open_three_directions_impl(next_board, index, BLACK) >= 2) return true;
-    return false;
+    board[index] = BLACK;
+    bool overline = is_overline(board, index, BLACK);
+    bool forbidden = overline || count_four_directions_impl(board, index, BLACK) >= 2 ||
+                      count_open_three_directions_impl(board, index, BLACK) >= 2;
+    board[index] = EMPTY;
+    return forbidden;
+}
+
+bool is_forbidden_for_black(const Board& board, int index) {
+    if (board[index] != EMPTY) return true;
+    auto [black_count, white_count] = stone_counts(board);
+    Board working = board;
+    return is_forbidden_for_black_impl(working, index, black_count + white_count);
 }
 
 std::vector<bool> legal_move_mask(const Board& board) {
     int player = infer_player(board);
     std::vector<bool> mask(BOARD_CELLS);
+    if (player != BLACK) {
+        for (int index = 0; index < BOARD_CELLS; ++index) {
+            mask[index] = board[index] == EMPTY;
+        }
+        return mask;
+    }
+
+    auto [black_count, white_count] = stone_counts(board);
+    int move_number = black_count + white_count;
+    Board working = board;
     for (int index = 0; index < BOARD_CELLS; ++index) {
         if (board[index] != EMPTY) {
             mask[index] = false;
             continue;
         }
-        mask[index] = (player == BLACK) ? !is_forbidden_for_black(board, index) : true;
+        mask[index] = !is_forbidden_for_black_impl(working, index, move_number);
     }
     return mask;
 }
@@ -227,6 +246,117 @@ std::optional<int> board_winner(const Board& board) {
     if (player_has_five(board, BLACK)) return BLACK;
     if (player_has_five(board, WHITE)) return WHITE;
     return std::nullopt;
+}
+
+// --- Reward shaping (renju_dqn.reward's hot path) -----------------------------------
+//
+// board_potential sums a per-stone threat score over every occupied cell, so it's O(stones)
+// native work per board rather than the O(1) rule checks above. reward.py used to do this loop
+// in Python, calling count_four_directions/count_open_three_directions (each a separate
+// GIL-releasing pybind11 call) once per stone; moving the whole loop here turns "O(stones)
+// Python<->native round trips per board" into one round trip per board (or, via
+// compute_rewards_batch, one round trip per training batch).
+constexpr int FOUR_WEIGHT = 9;
+constexpr int OPEN_THREE_WEIGHT = 3;
+constexpr double POTENTIAL_SCALE = 5.0;
+constexpr double DEFAULT_SHAPING_COEFFICIENT = 0.1;
+constexpr int DRAW = 0;
+
+int stone_threat_score_impl(Board& board, int index, int player) {
+    int fours = count_four_directions_impl(board, index, player);
+    int open_threes = count_open_three_directions_impl(board, index, player);
+    return FOUR_WEIGHT * fours + OPEN_THREE_WEIGHT * open_threes;
+}
+
+// `working` is mutated transiently per stone and always restored by the impl functions above,
+// so one buffer can be reused across every stone instead of copying `board` per candidate.
+double board_potential_impl(const Board& board, int player) {
+    int opponent = (player == BLACK) ? WHITE : BLACK;
+    Board working = board;
+    long long own_score = 0;
+    long long opponent_score = 0;
+    for (int index = 0; index < BOARD_CELLS; ++index) {
+        int cell = board[index];
+        if (cell == player) {
+            own_score += stone_threat_score_impl(working, index, player);
+        } else if (cell == opponent) {
+            opponent_score += stone_threat_score_impl(working, index, opponent);
+        }
+    }
+    return static_cast<double>(own_score - opponent_score);
+}
+
+double board_potential(const Board& board, int player) {
+    return board_potential_impl(board, player);
+}
+
+double normalized_potential_impl(const Board& board, int player, double scale) {
+    return std::tanh(board_potential_impl(board, player) / scale);
+}
+
+double normalized_potential(const Board& board, int player, double scale) {
+    return normalized_potential_impl(board, player, scale);
+}
+
+double terminal_reward(int player, int winner) {
+    if (winner == DRAW) return 0.0;
+    return winner == player ? 1.0 : -1.0;
+}
+
+double compute_reward_impl(
+    const Board& board,
+    const Board& next_board,
+    int player,
+    int winner,
+    bool done,
+    double gamma,
+    double coefficient,
+    double scale
+) {
+    double sparse = done ? terminal_reward(player, winner) : 0.0;
+    double phi_t = normalized_potential_impl(board, player, scale);
+    double phi_next = done ? 0.0 : normalized_potential_impl(next_board, player, scale);
+    return sparse + coefficient * (gamma * phi_next - phi_t);
+}
+
+double compute_reward(
+    const Board& board,
+    const Board& next_board,
+    int player,
+    int winner,
+    bool done,
+    double gamma,
+    double coefficient,
+    double scale
+) {
+    return compute_reward_impl(board, next_board, player, winner, done, gamma, coefficient, scale);
+}
+
+std::vector<double> compute_rewards_batch(
+    const std::vector<Board>& boards,
+    const std::vector<Board>& next_boards,
+    const std::vector<int>& players,
+    const std::vector<int>& winners,
+    const std::vector<bool>& dones,
+    double gamma,
+    double coefficient,
+    double scale
+) {
+    std::size_t n = boards.size();
+    std::vector<double> rewards(n);
+    for (std::size_t i = 0; i < n; ++i) {
+        rewards[i] = compute_reward_impl(
+            boards[i],
+            next_boards[i],
+            players[i],
+            winners[i],
+            static_cast<bool>(dones[i]),
+            gamma,
+            coefficient,
+            scale
+        );
+    }
+    return rewards;
 }
 
 }  // namespace
@@ -274,6 +404,47 @@ PYBIND11_MODULE(_rules_native, m) {
         py::arg("board"),
         py::arg("move"),
         py::arg("player"),
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "board_potential",
+        &board_potential,
+        py::arg("board"),
+        py::arg("player"),
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "normalized_potential",
+        &normalized_potential,
+        py::arg("board"),
+        py::arg("player"),
+        py::arg("scale") = POTENTIAL_SCALE,
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "compute_reward",
+        &compute_reward,
+        py::arg("board"),
+        py::arg("next_board"),
+        py::arg("player"),
+        py::arg("winner"),
+        py::arg("done"),
+        py::arg("gamma"),
+        py::arg("coefficient") = DEFAULT_SHAPING_COEFFICIENT,
+        py::arg("scale") = POTENTIAL_SCALE,
+        py::call_guard<py::gil_scoped_release>()
+    );
+    m.def(
+        "compute_rewards_batch",
+        &compute_rewards_batch,
+        py::arg("boards"),
+        py::arg("next_boards"),
+        py::arg("players"),
+        py::arg("winners"),
+        py::arg("dones"),
+        py::arg("gamma"),
+        py::arg("coefficient") = DEFAULT_SHAPING_COEFFICIENT,
+        py::arg("scale") = POTENTIAL_SCALE,
         py::call_guard<py::gil_scoped_release>()
     );
 }

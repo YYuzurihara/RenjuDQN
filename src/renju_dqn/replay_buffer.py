@@ -48,6 +48,13 @@ class _Transition:
     next_board: list[int] | None
     done: bool
     steps_to_end: int
+    # Both are pure functions of the fields above plus the buffer's (fixed) gamma/coefficient/
+    # scale, so they're computed once here at push time and cached, rather than being
+    # recomputed by every sample() draw that picks this transition -- with a buffer that's
+    # resampled many times over its lifetime, that turns O(times sampled) native rule-check
+    # work per transition into O(1).
+    next_legal_mask: list[bool]
+    reward: float
 
 
 class ReplayBuffer:
@@ -84,6 +91,17 @@ class ReplayBuffer:
         done: bool,
         steps_to_end: int,
     ) -> None:
+        next_legal_mask = legal_move_mask(next_board) if not done else [False] * BOARD_CELLS
+        reward = compute_reward(
+            board=board,
+            next_board=board if done else next_board,
+            player=player,
+            winner=winner,
+            done=done,
+            gamma=self.gamma,
+            coefficient=self.coefficient,
+            scale=self.scale,
+        )
         transition = _Transition(
             board=list(board),
             player=player,
@@ -93,6 +111,8 @@ class ReplayBuffer:
             next_board=list(next_board) if next_board is not None else None,
             done=done,
             steps_to_end=steps_to_end,
+            next_legal_mask=next_legal_mask,
+            reward=reward,
         )
         with self._lock:
             if len(self._transitions) < self.capacity:
@@ -155,23 +175,11 @@ class ReplayBuffer:
             (_other_player(t.player) if not t.done else t.player) for t in transitions
         ]
         next_moves = [t.move if not t.done else None for t in transitions]
-        next_legal_masks = [
-            (legal_move_mask(t.next_board) if not t.done else [False] * BOARD_CELLS)
-            for t in transitions
-        ]
-        rewards = [
-            compute_reward(
-                board=t.board,
-                next_board=t.board if t.done else t.next_board,
-                player=t.player,
-                winner=t.winner,
-                done=t.done,
-                gamma=self.gamma,
-                coefficient=self.coefficient,
-                scale=self.scale,
-            )
-            for t in transitions
-        ]
+        # Both cached on the transition at push() time (see _Transition), since they're pure
+        # functions of fields fixed at push time -- recomputing them here on every sample() draw
+        # would repeat the same native rule-check work every time a transition gets resampled.
+        next_legal_masks = [t.next_legal_mask for t in transitions]
+        rewards = [t.reward for t in transitions]
 
         state = encode_boards(boards, players, prev_moves)
         next_state = encode_boards(next_boards, next_players, next_moves)

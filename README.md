@@ -19,13 +19,13 @@ uv sync
 Hydra エントリポイントは `renju-dqn.py` で、`mode` の既定値は `train` です。
 
 ```bash
-uv run python ./renju-dqn.py
+nohup uv run python renju-dqn.py > output.log 2> error.log &
 ```
 
 設定は `config/train/default.yaml` 等に対応し、Hydra のオーバーライド構文でその場で上書きできます。
 
 ```bash
-uv run python ./renju-dqn.py data.path=data.csv train.max_epochs=100
+nohup uv run python renju-dqn.py data.path=data.csv train.max_epochs=100 > output.log 2> error.log &
 ```
 
 ## 合成データ生成

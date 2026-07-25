@@ -166,6 +166,7 @@ def self_play_worker(
     replay_buffer: ReplayBuffer,
     generator: torch.Generator,
     games_played: _ThreadSafeCounter,
+    games_budget_box: _SharedValue,
 ) -> None:
     """Actor loop: self-plays against `target_model` and pushes finished games into
     `replay_buffer` until `stop_event` is set. Runs on its own thread so it can overlap with
@@ -175,8 +176,19 @@ def self_play_worker(
     gradient-updated in place) rather than the online model, so the only thing `model_lock` has
     to guard is that swap -- the learner's optimizer steps on the online model need no
     coordination with this thread at all.
+
+    `games_budget_box` holds `(epoch_start_games, max_games_per_epoch)`, refreshed once per
+    epoch by the learner loop. Left uncapped (`max_games_per_epoch is None`), this thread runs
+    as fast as it can, so the self-play/gradient-update ratio -- and therefore the buffer's
+    state-action distribution -- drifts with however fast this thread happens to run relative to
+    the learner. Once the epoch's budget is used up, this thread idles until the next epoch
+    raises it.
     """
     while not stop_event.is_set():
+        epoch_start_games, max_games_per_epoch = games_budget_box.get()
+        if max_games_per_epoch is not None and games_played.value - epoch_start_games >= max_games_per_epoch:
+            stop_event.wait(0.05)
+            continue
         select_move = make_epsilon_greedy_policy(
             target_model, device, epsilon_box.get(), generator, model_lock=model_lock
         )
@@ -322,6 +334,7 @@ def train_model(cfg: DictConfig) -> None:
         )
     )
     window_box = _SharedValue(initial_window)
+    games_budget_box = _SharedValue((0, cfg.train.max_games_per_epoch))
     actor_thread = threading.Thread(
         target=self_play_worker,
         args=(
@@ -333,6 +346,7 @@ def train_model(cfg: DictConfig) -> None:
             replay_buffer,
             actor_generator,
             games_played,
+            games_budget_box,
         ),
         name="self-play-actor",
         daemon=True,
@@ -378,6 +392,7 @@ def train_model(cfg: DictConfig) -> None:
                 )
                 epsilon_box.set(epsilon)
                 window_box.set(curriculum_window)
+                games_budget_box.set((games_played.value, cfg.train.max_games_per_epoch))
                 epoch_loss_total = 0.0
                 epoch_q_total = 0.0
                 epoch_updates = 0

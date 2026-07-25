@@ -17,6 +17,11 @@ steps_per_epoch: 1200 # gradient steps per epoch
 # Self-play (actor thread) and replay_buffer.sample() (prefetch threads) run independently of
 # the learner loop, each on their own thread(s), so training isn't blocked alternating between
 # self-play, batch prep, and the GPU step.
+max_games_per_epoch: 1000 # cap on self-play games per epoch; once reached, the actor thread
+# idles until the next epoch. Left uncapped (null), the actor runs as fast as it can, so the
+# self-play/gradient-update ratio -- and therefore the buffer's state-action distribution --
+# drifts with however fast that thread happens to run relative to the learner (hardware-dependent,
+# not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead.
 prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
 epsilon_start: 1.0
 epsilon_end: 0.1

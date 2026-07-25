@@ -236,6 +236,47 @@
         display: none;
       }
 
+      .turn-select-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(31, 28, 24, 0.6);
+        backdrop-filter: blur(2px);
+      }
+
+      .turn-select-overlay[hidden] {
+        display: none;
+      }
+
+      .turn-select-panel {
+        display: grid;
+        gap: 16px;
+        max-width: min(320px, 100%);
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        text-align: center;
+      }
+
+      .turn-select-title {
+        margin: 0;
+        font-weight: 700;
+      }
+
+      .turn-select-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+      }
+
       .panel {
         padding: 16px;
         border: 1px solid var(--line);
@@ -363,6 +404,29 @@
 
       <section class="play-area">
         <div class="board-shell">
+          <div class="turn-select-overlay" id="turn-select-overlay">
+            <div class="turn-select-panel">
+              <p class="turn-select-title" data-i18n="turnSelectTitle">あなたの手番を選んでください</p>
+              <div class="turn-select-actions">
+                <button
+                  type="button"
+                  class="turn-select-button"
+                  data-color="black"
+                  data-i18n="humanColorBlackOption"
+                >
+                  黒(先手)
+                </button>
+                <button
+                  type="button"
+                  class="turn-select-button secondary"
+                  data-color="white"
+                  data-i18n="humanColorWhiteOption"
+                >
+                  白(後手)
+                </button>
+              </div>
+            </div>
+          </div>
           <div class="opening-tip" id="opening-tip" data-i18n="openingTip" hidden>
             初手なので中央においてね
           </div>
@@ -374,13 +438,6 @@
             <div class="stat" id="game-status">状態: 開始前</div>
             <div class="stat" id="ai-status">AI: まだ着手していません</div>
             <div class="stat" id="reward-status">報酬: まだ手がありません</div>
-          </div>
-          <div class="field">
-            <label for="human-color" data-i18n="humanColorLabel">あなたの手番</label>
-            <select id="human-color">
-              <option value="black" data-i18n="humanColorBlackOption">黒(先手)</option>
-              <option value="white" data-i18n="humanColorWhiteOption">白(後手)</option>
-            </select>
           </div>
           <div class="actions">
             <button id="new-game" type="button" data-i18n="newGameButton">新しい対局</button>
@@ -473,7 +530,8 @@
       const fillEmptyButton = document.querySelector("#fill-empty");
       const newGameButton = document.querySelector("#new-game");
       const aiMoveButton = document.querySelector("#ai-move");
-      const humanColorSelect = document.querySelector("#human-color");
+      const turnSelectOverlay = document.querySelector("#turn-select-overlay");
+      const turnSelectButtons = document.querySelectorAll(".turn-select-button");
       const rewardShapingToggleButton = document.querySelector("#reward-shaping-toggle");
       const statusNode = document.querySelector("#status");
       const boardInfoNode = document.querySelector("#board-info");
@@ -493,11 +551,14 @@
         ja: {
           ai: "AI",
           aiAfterHumanMove: "AI: あなたの着手後に応答します",
+          aiAssistedMove: ({coord, index, qValue}) =>
+            `AI(代打ち): ${coord} に着手 (top1=${index}, q=${qValue})`,
           aiFailed: ({message}) => `AI: 失敗 (${message})`,
           aiIdle: "AI: まだ着手していません",
           aiMoveButton: "AI に着手させる",
           aiMoveFailed: "AI 着手失敗",
           aiMoved: ({coord, index, qValue}) => `AI: ${coord} に着手 (top1=${index}, q=${qValue})`,
+          aiSuggestingMove: "AI があなたの代わりに考えています...",
           aiSyncedFromTextarea: "AI: textarea から盤面を反映",
           aiThinking: "AI が考えています...",
           aiTurn: "AI の手番",
@@ -514,7 +575,6 @@
           fillEmptyButton: "空盤面を入れる",
           gameStatus: ({message}) => `状態: ${message}`,
           humanColorBlackOption: "黒(先手)",
-          humanColorLabel: "あなたの手番",
           humanColorWhiteOption: "白(後手)",
           illegalMove: ({coord}) => `そこには打てません: ${coord}`,
           inferenceComplete: ({index}) => `推論完了: predicted_index=${index}`,
@@ -562,6 +622,7 @@
           title: "Renju DQN ONNX デモ",
           turnCurrent: ({playerLabel, actorLabel}) => `手番: ${playerLabel}(${actorLabel})`,
           turnGameOver: "手番: 対局終了",
+          turnSelectTitle: "あなたの手番を選んでください",
           white: "白",
           whiteWins: "白の勝ち",
           you: "あなた",
@@ -570,11 +631,14 @@
         en: {
           ai: "AI",
           aiAfterHumanMove: "AI: will respond after your move",
+          aiAssistedMove: ({coord, index, qValue}) =>
+            `AI (on your behalf): moved at ${coord} (top1=${index}, q=${qValue})`,
           aiFailed: ({message}) => `AI: failed (${message})`,
           aiIdle: "AI: no move yet",
           aiMoveButton: "Let AI move",
           aiMoveFailed: "AI move failed",
           aiMoved: ({coord, index, qValue}) => `AI: moved at ${coord} (top1=${index}, q=${qValue})`,
+          aiSuggestingMove: "AI is thinking on your behalf...",
           aiSyncedFromTextarea: "AI: synced board from textarea",
           aiThinking: "AI is thinking...",
           aiTurn: "AI's turn",
@@ -591,7 +655,6 @@
           fillEmptyButton: "Fill empty board",
           gameStatus: ({message}) => `Status: ${message}`,
           humanColorBlackOption: "Black (first)",
-          humanColorLabel: "Your color",
           humanColorWhiteOption: "White (second)",
           illegalMove: ({coord}) => `Illegal move: ${coord}`,
           inferenceComplete: ({index}) => `Inference complete: predicted_index=${index}`,
@@ -639,6 +702,7 @@
           title: "Renju DQN ONNX Demo",
           turnCurrent: ({playerLabel, actorLabel}) => `Turn: ${playerLabel} (${actorLabel})`,
           turnGameOver: "Turn: game over",
+          turnSelectTitle: "Choose your color",
           white: "White",
           whiteWins: "White wins",
           you: "you",
@@ -1010,6 +1074,14 @@
         }
       }
 
+      function showTurnSelectOverlay() {
+        turnSelectOverlay.hidden = false;
+      }
+
+      function hideTurnSelectOverlay() {
+        turnSelectOverlay.hidden = true;
+      }
+
       async function ensureLoaded() {
         if (loaded) {
           return loaded;
@@ -1074,6 +1146,58 @@
             gameState.busy = false;
             refreshGameSummary("yourTurn");
           }
+        } catch (error) {
+          gameState.busy = false;
+          refreshGameSummary("aiMoveFailed");
+          setAiStatus("aiFailed", {message: error.message});
+          setResult(error.stack ?? String(error));
+          setStatus("statusAiMoveFailed", {message: error.message});
+        }
+      }
+
+      async function runAiAssistedHumanMove() {
+        if (gameState.busy || gameState.over) {
+          return;
+        }
+        if (currentPlayer() !== humanPlayer) {
+          setStatus("notHumanTurn");
+          return;
+        }
+
+        gameState.busy = true;
+        refreshGameSummary("aiSuggestingMove");
+        try {
+          const {session, metadata} = await ensureLoaded();
+          const lastMoveIndex = gameState.lastMoveIndex;
+          const prediction = await predictBoard(
+            session,
+            gameState.board,
+            humanPlayer,
+            lastMoveIndex,
+            metadata,
+            {topK: 5, applyLegalMask: true},
+          );
+          const index = prediction.predictedIndex;
+          const prevBoard = gameState.board.slice();
+          gameState.board[index] = humanPlayer;
+          gameState.lastMoveIndex = index;
+          const qValue = prediction.predictedQValue.toFixed(4);
+          const reward = recordMoveReward(prevBoard, humanPlayer, index);
+          gameState.moveLog.push({
+            index,
+            player: humanPlayer,
+            qValue,
+            reward: formatReward(reward),
+          });
+          setAiStatus("aiAssistedMove", {coord: indexToCoord(index), index, qValue});
+          setResult(JSON.stringify(prediction, null, 2));
+          gameState.busy = false;
+          if (evaluateBoardAfterMove()) {
+            return;
+          }
+          setAiStatus("aiAfterHumanMove");
+          refreshGameSummary("aiTurn");
+          await runAiMove();
         } catch (error) {
           gameState.busy = false;
           refreshGameSummary("aiMoveFailed");
@@ -1149,11 +1273,17 @@
         resetGame();
       });
 
-      newGameButton.addEventListener("click", startNewGame);
-      aiMoveButton.addEventListener("click", runAiMove);
-      humanColorSelect.addEventListener("change", () => {
-        humanPlayer = humanColorSelect.value === "white" ? WHITE : BLACK;
-        startNewGame();
+      newGameButton.addEventListener("click", () => {
+        resetGame();
+        showTurnSelectOverlay();
+      });
+      aiMoveButton.addEventListener("click", runAiAssistedHumanMove);
+      turnSelectButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          humanPlayer = button.dataset.color === "white" ? WHITE : BLACK;
+          hideTurnSelectOverlay();
+          startNewGame();
+        });
       });
       rewardShapingToggleButton.addEventListener("click", () => {
         rewardShapingEnabled = !rewardShapingEnabled;
@@ -1171,7 +1301,8 @@
       });
       boardCsvInput.value = createEmptyBoardCsv();
       applyLanguage(currentLanguage);
-      startNewGame();
+      resetGame();
+      showTurnSelectOverlay();
     </script>
   </body>
 </html>

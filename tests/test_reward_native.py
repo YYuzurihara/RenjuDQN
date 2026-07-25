@@ -56,21 +56,3 @@ def test_compute_reward_matches_python_fallback(seed):
                     board, next_board, player, winner, done, 0.99
                 )
                 assert native_value == pytest.approx(python_value)
-
-
-def test_compute_rewards_batch_matches_per_transition_calls():
-    boards = [_random_board(num_stones=n, seed=n) for n in (10, 20, 30)]
-    next_boards = [_random_board(num_stones=n, seed=n + 1) for n in (10, 20, 30)]
-    players = [BLACK, WHITE, BLACK]
-    winners = [0, WHITE, BLACK]
-    dones = [False, True, True]
-
-    batched = reward.compute_rewards_batch(
-        boards, next_boards, players, winners, dones, gamma=0.99
-    )
-    individually = [
-        reward.compute_reward(b, nb, p, w, d, gamma=0.99)
-        for b, nb, p, w, d in zip(boards, next_boards, players, winners, dones)
-    ]
-
-    assert batched == pytest.approx(individually)

@@ -254,8 +254,7 @@ std::optional<int> board_winner(const Board& board) {
 // native work per board rather than the O(1) rule checks above. reward.py used to do this loop
 // in Python, calling count_four_directions/count_open_three_directions (each a separate
 // GIL-releasing pybind11 call) once per stone; moving the whole loop here turns "O(stones)
-// Python<->native round trips per board" into one round trip per board (or, via
-// compute_rewards_batch, one round trip per training batch).
+// Python<->native round trips per board" into one round trip per board.
 constexpr int FOUR_WEIGHT = 9;
 constexpr int OPEN_THREE_WEIGHT = 3;
 constexpr double POTENTIAL_SCALE = 5.0;
@@ -332,33 +331,6 @@ double compute_reward(
     return compute_reward_impl(board, next_board, player, winner, done, gamma, coefficient, scale);
 }
 
-std::vector<double> compute_rewards_batch(
-    const std::vector<Board>& boards,
-    const std::vector<Board>& next_boards,
-    const std::vector<int>& players,
-    const std::vector<int>& winners,
-    const std::vector<bool>& dones,
-    double gamma,
-    double coefficient,
-    double scale
-) {
-    std::size_t n = boards.size();
-    std::vector<double> rewards(n);
-    for (std::size_t i = 0; i < n; ++i) {
-        rewards[i] = compute_reward_impl(
-            boards[i],
-            next_boards[i],
-            players[i],
-            winners[i],
-            static_cast<bool>(dones[i]),
-            gamma,
-            coefficient,
-            scale
-        );
-    }
-    return rewards;
-}
-
 }  // namespace
 
 PYBIND11_MODULE(_rules_native, m) {
@@ -429,19 +401,6 @@ PYBIND11_MODULE(_rules_native, m) {
         py::arg("player"),
         py::arg("winner"),
         py::arg("done"),
-        py::arg("gamma"),
-        py::arg("coefficient") = DEFAULT_SHAPING_COEFFICIENT,
-        py::arg("scale") = POTENTIAL_SCALE,
-        py::call_guard<py::gil_scoped_release>()
-    );
-    m.def(
-        "compute_rewards_batch",
-        &compute_rewards_batch,
-        py::arg("boards"),
-        py::arg("next_boards"),
-        py::arg("players"),
-        py::arg("winners"),
-        py::arg("dones"),
         py::arg("gamma"),
         py::arg("coefficient") = DEFAULT_SHAPING_COEFFICIENT,
         py::arg("scale") = POTENTIAL_SCALE,

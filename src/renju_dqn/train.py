@@ -244,23 +244,36 @@ def dqn_update(
     batch: Batch,
     gamma: float,
     gradient_clip_norm: float | None,
+    double_dqn: bool = False,
 ) -> tuple[float, float]:
     """One TD-error gradient step on a pre-fetched, already-on-device `batch`; returns
     `(loss, mean_q_taken)`.
+
+    `double_dqn` switches the bootstrap target from vanilla DQN -- `target_model` both selects
+    and evaluates the next action, which is prone to max-Q overestimation bias -- to Double DQN,
+    where `online_model` selects the next action and `target_model` only evaluates it.
     """
     state, action, reward, next_state, done, next_legal_mask = batch
+
+    with torch.no_grad():
+        next_q_target = target_model(next_state)
+        next_q_target = next_q_target.masked_fill(~next_legal_mask, float("-inf"))
+        if double_dqn:
+            was_training = online_model.training
+            online_model.eval()
+            next_q_online = online_model(next_state).masked_fill(~next_legal_mask, float("-inf"))
+            online_model.train(was_training)
+            next_action = next_q_online.argmax(dim=1, keepdim=True)
+            next_q_max = next_q_target.gather(1, next_action).squeeze(1)
+        else:
+            next_q_max = next_q_target.max(dim=1).values
+        next_q_max = torch.where(done, torch.zeros_like(next_q_max), next_q_max)
+        # next_state is encoded from the opponent's perspective, so their best value is negated.
+        target = reward - gamma * next_q_max
 
     online_model.train()
     q_values = online_model(state)
     q_taken = q_values.gather(1, action.unsqueeze(1)).squeeze(1)
-
-    with torch.no_grad():
-        next_q = target_model(next_state)
-        next_q = next_q.masked_fill(~next_legal_mask, float("-inf"))
-        next_q_max = next_q.max(dim=1).values
-        next_q_max = torch.where(done, torch.zeros_like(next_q_max), next_q_max)
-        # next_state is encoded from the opponent's perspective, so their best value is negated.
-        target = reward - gamma * next_q_max
 
     loss = criterion(q_taken, target)
 
@@ -417,6 +430,7 @@ def train_model(cfg: DictConfig) -> None:
                         batch,
                         cfg.train.gamma,
                         cfg.train.gradient_clip_norm,
+                        double_dqn=cfg.train.double_dqn,
                     )
                     if scheduler is not None:
                         scheduler.step()

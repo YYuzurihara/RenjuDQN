@@ -11,6 +11,9 @@ log_every_steps: 20
 
 # DQN
 gamma: 0.99
+double_dqn: false # if true, the online network selects the next action and the target network
+# only evaluates it (Double DQN), instead of the target network doing both (vanilla DQN), which
+# curbs max-Q overestimation bias.
 replay_buffer_capacity: 1000000 #1M
 target_update_interval: 200 # gradient steps between hard target-network syncs
 steps_per_epoch: 1200 # gradient steps per epoch

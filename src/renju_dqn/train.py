@@ -381,9 +381,8 @@ def train_model(cfg: DictConfig) -> None:
                 epoch_loss_total = 0.0
                 epoch_q_total = 0.0
                 epoch_updates = 0
-                total_updates = cfg.train.steps_per_epoch * cfg.train.updates_per_game
                 epoch_progress = tqdm(
-                    range(total_updates),
+                    range(cfg.train.steps_per_epoch),
                     desc=(
                         f"Epoch {epoch}/{cfg.train.max_epochs} "
                         f"[learner{f', last {curriculum_window} steps' if curriculum_window is not None else ''}]"

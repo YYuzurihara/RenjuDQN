@@ -516,6 +516,11 @@ def train_model(cfg: DictConfig) -> None:
                         mlflow.log_metric("train_step_mean_q", mean_q, step=global_step)
                         if cfg.train.exploration == "epsilon_greedy":
                             mlflow.log_metric("epsilon", epsilon, step=global_step)
+                        elif cfg.train.exploration == "noisy_net":
+                            for head_name, sigma_norm in online_model.noisy_sigma_norms().items():
+                                mlflow.log_metric(
+                                    f"noisy_sigma/{head_name}", sigma_norm, step=global_step
+                                )
 
                     epoch_progress.set_postfix(
                         td_loss=f"{epoch_loss_total / epoch_updates:.4f}",

@@ -135,6 +135,25 @@ class RenjuResNetDQN(nn.Module):
             if isinstance(module, NoisyLinear):
                 module.reset_noise()
 
+    def noisy_sigma_norms(self) -> dict[str, float]:
+        """Mean |sigma| per `NoisyLinear` submodule, keyed by its attribute name (e.g.
+        "q_head" or "value_head"/"advantage_head"); empty if `noisy=False`.
+
+        `NoisyLinear.weight_sigma`/`bias_sigma` are plain learned parameters with no
+        lower-bound clamp, so gradient descent is free to shrink them toward zero if that
+        happens to reduce TD loss -- silently collapsing self-play exploration without any
+        other visible symptom. Tracking this alongside td_loss distinguishes "converged" from
+        "stopped exploring".
+        """
+        norms: dict[str, float] = {}
+        for name, module in self.named_modules():
+            if isinstance(module, NoisyLinear):
+                sigma = torch.cat(
+                    [module.weight_sigma.detach().flatten(), module.bias_sigma.detach().flatten()]
+                )
+                norms[name] = sigma.abs().mean().item()
+        return norms
+
     def set_noise_training(self, mode: bool = True) -> None:
         """Toggle NoisyLinear's noise application independent of the rest of the model's
         train()/eval() mode -- callers that need batchnorm in eval mode (single-sample

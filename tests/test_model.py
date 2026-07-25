@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import torch
 
 from renju_dqn.board_encoder import NUM_CHANNELS
@@ -93,3 +94,32 @@ def test_set_noise_training_enables_noise_independent_of_eval_mode():
         model.reset_noise()
         second = model(state)
     assert not torch.allclose(first, second)
+
+
+def test_noisy_sigma_norms_reports_q_head_for_non_dueling_noisy_model():
+    model = _build_model(noisy=True)
+    norms = model.noisy_sigma_norms()
+    assert set(norms) == {"q_head"}
+    assert norms["q_head"] > 0.0
+
+
+def test_noisy_sigma_norms_reports_both_heads_for_dueling_noisy_model():
+    model = _build_model(dueling=True, noisy=True)
+    norms = model.noisy_sigma_norms()
+    assert set(norms) == {"value_head", "advantage_head"}
+    assert all(value > 0.0 for value in norms.values())
+
+
+def test_noisy_sigma_norms_is_empty_for_non_noisy_model():
+    model = _build_model(noisy=False)
+    assert model.noisy_sigma_norms() == {}
+
+
+def test_noisy_sigma_norms_tracks_sigma_shrinkage():
+    model = _build_model(noisy=True)
+    before = model.noisy_sigma_norms()["q_head"]
+    with torch.no_grad():
+        model.q_head.weight_sigma.mul_(0.1)
+        model.q_head.bias_sigma.mul_(0.1)
+    after = model.noisy_sigma_norms()["q_head"]
+    assert after == pytest.approx(before * 0.1)

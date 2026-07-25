@@ -23,17 +23,26 @@ steps_per_epoch: 2000 # gradient steps per epoch
 # Self-play (actor thread) and replay_buffer.sample() (prefetch threads) run independently of
 # the learner loop, each on their own thread(s), so training isn't blocked alternating between
 # self-play, batch prep, and the GPU step.
-max_games_per_epoch: 30000 # cap on self-play games per epoch; once reached, the actor thread
+max_games_per_epoch: 30000 # soft cap on self-play games per epoch; once reached, the actor thread
 # idles until the next epoch. Left uncapped (null), the actor runs as fast as it can, so the
 # self-play/gradient-update ratio -- and therefore the buffer's state-action distribution --
 # drifts with however fast that thread happens to run relative to the learner (hardware-dependent,
-# not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead.
+# not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead. With
+# self_play_batch_games games in flight at once, this can overshoot by up to
+# self_play_batch_games - 1 (several can cross the cap in the same ply-step) -- fine as a sizing
+# target, not exact enough to rely on for a hard per-epoch count.
 # 30000 targets replay_buffer_capacity/2 = 500k online transitions: data.csv's warmup set
 # averages ~16 plies/game (3000 games, ~49k transitions), so ~30k self-play games produce
 # ~500k transitions -- by the end of epoch 1, updated-model data reaches roughly half of the
 # buffer's total capacity (well before the buffer is full enough to start evicting warmup rows).
 # It keeps growing past that in later epochs as self-play keeps accumulating on top of it.
-prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
+prefetch_workers: 8 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
+self_play_batch_games: 64 # self-play games run concurrently (in lockstep) on the actor thread;
+# every ply, all of them are scored in a single batched forward pass instead of one board at a
+# time, so self-play games/sec scales with this instead of being capped by per-call GPU launch
+# overhead. Raise it until the actor thread's games/epoch approaches max_games_per_epoch (or GPU
+# memory/contention with the learner's own batches becomes the limit); the learner thread shares
+# the same GPU, so pushing this too high can slow down gradient steps instead of self-play.
 
 exploration: epsilon_greedy # epsilon_greedy or noisy_net.
 # epsilon_greedy: self-play picks a uniformly random legal move with probability epsilon

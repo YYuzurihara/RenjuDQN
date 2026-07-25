@@ -9,7 +9,9 @@ from renju_dqn.model import RenjuResNetDQN
 from renju_dqn.train import (
     curriculum_window_for_epoch,
     epsilon_for_curriculum,
+    make_epsilon_greedy_policy_batch,
     make_noisy_net_policy,
+    make_noisy_net_policy_batch,
     train_model,
 )
 
@@ -93,3 +95,53 @@ def test_make_noisy_net_policy_always_returns_legal_move():
 
     move = select_move(board, player=1, prev_move=None, mask=mask)
     assert mask[move]
+
+
+def _two_board_batch():
+    boards = [[0] * BOARD_CELLS, [0] * BOARD_CELLS]
+    masks = [[False] * BOARD_CELLS, [False] * BOARD_CELLS]
+    masks[0][10] = True
+    masks[0][42] = True
+    masks[1][100] = True
+    players = [1, 2]
+    prev_moves = [None, 7]
+    return boards, players, prev_moves, masks
+
+
+def test_make_epsilon_greedy_policy_batch_always_returns_legal_moves():
+    model = RenjuResNetDQN(
+        in_channels=NUM_CHANNELS,
+        channels=8,
+        num_blocks=2,
+        head_channels=2,
+        num_move_labels=BOARD_CELLS,
+    )
+    device = torch.device("cpu")
+    generator = torch.Generator().manual_seed(0)
+    boards, players, prev_moves, masks = _two_board_batch()
+
+    for epsilon in (0.0, 0.5, 1.0):
+        select_moves = make_epsilon_greedy_policy_batch(model, device, epsilon, generator)
+        moves = select_moves(boards, players, prev_moves, masks)
+        assert len(moves) == len(boards)
+        for move, mask in zip(moves, masks):
+            assert mask[move]
+
+
+def test_make_noisy_net_policy_batch_always_returns_legal_moves():
+    model = RenjuResNetDQN(
+        in_channels=NUM_CHANNELS,
+        channels=8,
+        num_blocks=2,
+        head_channels=2,
+        num_move_labels=BOARD_CELLS,
+        noisy=True,
+    )
+    device = torch.device("cpu")
+    select_moves = make_noisy_net_policy_batch(model, device)
+    boards, players, prev_moves, masks = _two_board_batch()
+
+    moves = select_moves(boards, players, prev_moves, masks)
+    assert len(moves) == len(boards)
+    for move, mask in zip(moves, masks):
+        assert mask[move]

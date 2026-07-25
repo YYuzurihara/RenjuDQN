@@ -2,9 +2,10 @@
 buffer that is warmed up from `mcts.cpp` self-play logs and then grown online via
 epsilon-greedy self-play (Plan.md phase4).
 
-Self-play and gradient updates run on separate threads (actor/learner): self-play is
-CPU-bound (native rule checks) while training is GPU-bound, so overlapping them instead of
-alternating in one loop lets both proceed concurrently.
+Self-play and gradient updates run on separate threads (actor/learner) so overlapping them
+instead of alternating in one loop lets both proceed concurrently. Self-play itself batches many
+games in lockstep (see `self_play_worker`) so its own GPU forward passes aren't limited to one
+board at a time.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import math
 import queue
 import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,9 +26,9 @@ from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from tqdm import tqdm
 
-from .board_encoder import encode_board
+from .board_encoder import encode_board, encode_boards
 from .dataset import ReplayDataset
-from .env import SelectMove, play_self_play_game
+from .env import GameState, SelectMove, SelectMovesBatch, step_games_batch
 from .model import RenjuResNetDQN
 from .replay_buffer import ReplayBuffer
 from .rules import BOARD_CELLS
@@ -170,6 +172,100 @@ def make_noisy_net_policy(
     return select_move
 
 
+def make_epsilon_greedy_policy_batch(
+    model: nn.Module,
+    device: torch.device,
+    epsilon: float,
+    generator: torch.Generator,
+    model_lock: threading.Lock | None = None,
+) -> SelectMovesBatch:
+    """Batched form of `make_epsilon_greedy_policy`: decides moves for every game in the batch
+    from one forward pass instead of one board at a time, so self-play throughput scales with
+    batch size instead of being capped by per-call GPU launch overhead (see
+    `train.self_play_worker`).
+
+    Per game, the epsilon roll (random legal move vs. greedy) happens before batching the
+    forward pass, same as the per-game version -- only games that roll "greedy" are ever encoded
+    and sent through the model.
+    """
+
+    def select_moves(
+        boards: list[list[int]],
+        players: list[int],
+        prev_moves: list[int | None],
+        masks: list[list[bool]],
+    ) -> list[int]:
+        moves: list[int | None] = [None] * len(boards)
+        greedy_indices: list[int] = []
+        for index, mask in enumerate(masks):
+            if torch.rand((), generator=generator).item() < epsilon:
+                legal_indices = [i for i, ok in enumerate(mask) if ok]
+                choice = int(torch.randint(0, len(legal_indices), (1,), generator=generator).item())
+                moves[index] = legal_indices[choice]
+            else:
+                greedy_indices.append(index)
+
+        if greedy_indices:
+            state = encode_boards(
+                [boards[i] for i in greedy_indices],
+                [players[i] for i in greedy_indices],
+                [prev_moves[i] for i in greedy_indices],
+            ).to(device)
+            legal_mask_tensor = torch.tensor(
+                [masks[i] for i in greedy_indices], dtype=torch.bool, device=device
+            )
+            model.eval()
+            with torch.no_grad():
+                if model_lock is not None:
+                    with model_lock:
+                        q_values = model(state)
+                else:
+                    q_values = model(state)
+            q_values = q_values.masked_fill(~legal_mask_tensor, float("-inf"))
+            greedy_moves = q_values.argmax(dim=1).tolist()
+            for slot, index in enumerate(greedy_indices):
+                moves[index] = greedy_moves[slot]
+
+        return moves  # type: ignore[return-value]
+
+    return select_moves
+
+
+def make_noisy_net_policy_batch(
+    model: RenjuResNetDQN,
+    device: torch.device,
+    model_lock: threading.Lock | None = None,
+) -> SelectMovesBatch:
+    """Batched form of `make_noisy_net_policy`. Note this resamples the noisy head's noise once
+    per batch (i.e. once per ply across every game in the batch) rather than once per individual
+    move as the per-game version does -- games at the same ply share one noise draw, trading
+    some exploration granularity for the ability to score them in a single forward pass.
+    """
+
+    def select_moves(
+        boards: list[list[int]],
+        players: list[int],
+        prev_moves: list[int | None],
+        masks: list[list[bool]],
+    ) -> list[int]:
+        state = encode_boards(boards, players, prev_moves).to(device)
+        legal_mask_tensor = torch.tensor(masks, dtype=torch.bool, device=device)
+        model.eval()
+        model.set_noise_training(True)
+        with torch.no_grad():
+            if model_lock is not None:
+                with model_lock:
+                    model.reset_noise()
+                    q_values = model(state)
+            else:
+                model.reset_noise()
+                q_values = model(state)
+        q_values = q_values.masked_fill(~legal_mask_tensor, float("-inf"))
+        return q_values.argmax(dim=1).tolist()
+
+    return select_moves
+
+
 class _SharedValue:
     """A value shared between threads (epsilon, curriculum window), written once per epoch by
     the learner and read by the actor/prefetch threads.
@@ -205,6 +301,26 @@ class _ThreadSafeCounter:
             return self._value
 
 
+class _ThreadSafeAccumulator:
+    """Running total of a float, updated from one thread and read from another (self-play
+    timing breakdown, for progress/logging only -- see `self_play_worker`'s `inference_seconds`
+    and `tick_seconds`).
+    """
+
+    def __init__(self) -> None:
+        self._value = 0.0
+        self._lock = threading.Lock()
+
+    def add(self, delta: float) -> None:
+        with self._lock:
+            self._value += delta
+
+    @property
+    def value(self) -> float:
+        with self._lock:
+            return self._value
+
+
 def self_play_worker(
     stop_event: threading.Event,
     epsilon_box: _SharedValue,
@@ -216,10 +332,24 @@ def self_play_worker(
     games_played: _ThreadSafeCounter,
     games_budget_box: _SharedValue,
     exploration: str,
+    batch_games: int,
+    inference_seconds: _ThreadSafeAccumulator,
+    tick_seconds: _ThreadSafeAccumulator,
 ) -> None:
-    """Actor loop: self-plays against `target_model` and pushes finished games into
-    `replay_buffer` until `stop_event` is set. Runs on its own thread so it can overlap with
-    the learner thread's GPU-bound gradient updates instead of alternating with them.
+    """Actor loop: runs up to `batch_games` self-play games concurrently against `target_model`,
+    deciding all their moves per ply in one batched forward pass, and pushes each game into
+    `replay_buffer` as soon as it finishes, until `stop_event` is set. Runs on its own thread so
+    it can overlap with the learner thread's GPU-bound gradient updates instead of alternating
+    with them.
+
+    A single sequential game only ever asks the model for one board's worth of Q-values at a
+    time, which is latency- rather than throughput-bound (GPU kernel-launch overhead dominates a
+    batch-of-1 forward pass) -- so self-play games/sec was capped far below what the same GPU
+    could serve at a larger batch size. Stepping `batch_games` games in lockstep (see
+    `env.step_games_batch`) turns that into one batched forward pass per ply shared across all of
+    them, so throughput scales with `batch_games` instead of being fixed by per-call overhead.
+    Whenever a game in the batch finishes, its slot is immediately refilled with a fresh game
+    (budget permitting) so the batch stays full rather than shrinking over time.
 
     Uses `target_model` (only ever wholesale-replaced via `load_state_dict`, never
     gradient-updated in place) rather than the online model, so the only thing `model_lock` has
@@ -230,27 +360,76 @@ def self_play_worker(
     epoch by the learner loop. Left uncapped (`max_games_per_epoch is None`), this thread runs
     as fast as it can, so the self-play/gradient-update ratio -- and therefore the buffer's
     state-action distribution -- drifts with however fast this thread happens to run relative to
-    the learner. Once the epoch's budget is used up, this thread idles until the next epoch
-    raises it.
+    the learner. Once the epoch's budget is used up, finished slots are simply left empty
+    (in-flight games are allowed to finish) until the next epoch's budget reopens them. Because
+    several slots can cross the budget in the same ply-step, the actual count can overshoot
+    `max_games_per_epoch` by up to `batch_games - 1` (versus at most 1 for a single sequential
+    game) -- fine for a soft cap sizing the buffer's self-play/warmup mix, not exact enough to
+    rely on for a hard per-epoch count.
 
     `exploration` selects how moves are picked: "epsilon_greedy" mixes in uniformly random
     legal moves per `epsilon_box`; "noisy_net" always plays greedy against `target_model`'s
-    NoisyLinear head, which is resampled before every move instead.
+    NoisyLinear head, which is resampled before every ply instead.
+
+    `inference_seconds`/`tick_seconds` split each ply-step's wall time into time spent inside
+    `select_moves` (the batched model forward pass, GPU-bound) versus the whole
+    `step_games_batch` call (which also does the CPU-bound legal-move/board-update/win-check
+    work around it). `tick_seconds - inference_seconds` is that CPU-bound share; watching it grow
+    as a fraction of `tick_seconds` while raising `batch_games` shows when self-play throughput
+    stops being GPU-limited and starts being limited by that per-ply Python/native bookkeeping
+    instead (see `train_model`, which logs the two as `self_play_inference_seconds` and
+    `self_play_state_transition_seconds` per epoch).
     """
-    while not stop_event.is_set():
+    games: list[GameState | None] = [None] * batch_games
+
+    def try_spawn(slot: int) -> None:
         epoch_start_games, max_games_per_epoch = games_budget_box.get()
         if max_games_per_epoch is not None and games_played.value - epoch_start_games >= max_games_per_epoch:
+            return
+        games[slot] = GameState()
+
+    for slot in range(batch_games):
+        try_spawn(slot)
+
+    while not stop_event.is_set():
+        active_slots = [slot for slot, game in enumerate(games) if game is not None]
+        if not active_slots:
             stop_event.wait(0.05)
+            for slot in range(batch_games):
+                try_spawn(slot)
             continue
+
         if exploration == "noisy_net":
-            select_move = make_noisy_net_policy(target_model, device, model_lock=model_lock)
+            base_select_moves: SelectMovesBatch = make_noisy_net_policy_batch(
+                target_model, device, model_lock=model_lock
+            )
         else:
-            select_move = make_epsilon_greedy_policy(
+            base_select_moves = make_epsilon_greedy_policy_batch(
                 target_model, device, epsilon_box.get(), generator, model_lock=model_lock
             )
-        rows, winner = play_self_play_game(select_move)
-        replay_buffer.push_game(rows, winner)
-        games_played.increment()
+
+        def select_moves(
+            boards: list[list[int]],
+            players: list[int],
+            prev_moves: list[int | None],
+            masks: list[list[bool]],
+            _base: SelectMovesBatch = base_select_moves,
+        ) -> list[int]:
+            start = time.perf_counter()
+            moves = _base(boards, players, prev_moves, masks)
+            inference_seconds.add(time.perf_counter() - start)
+            return moves
+
+        active_games = [games[slot] for slot in active_slots]
+        tick_start = time.perf_counter()
+        finished = step_games_batch(active_games, select_moves)  # type: ignore[arg-type]
+        tick_seconds.add(time.perf_counter() - tick_start)
+        for local_index, rows, winner in finished:
+            slot = active_slots[local_index]
+            replay_buffer.push_game(rows, winner)
+            games_played.increment()
+            games[slot] = None
+            try_spawn(slot)
 
 
 def batch_prefetch_worker(
@@ -420,6 +599,8 @@ def train_model(cfg: DictConfig) -> None:
 
     stop_event = threading.Event()
     games_played = _ThreadSafeCounter()
+    self_play_inference_seconds = _ThreadSafeAccumulator()
+    self_play_tick_seconds = _ThreadSafeAccumulator()
     initial_window = curriculum_window_for_epoch(1, cfg.train.curriculum_step_size)
     epsilon_box = _SharedValue(
         epsilon_for_curriculum(
@@ -445,6 +626,9 @@ def train_model(cfg: DictConfig) -> None:
             games_played,
             games_budget_box,
             cfg.train.exploration,
+            cfg.train.self_play_batch_games,
+            self_play_inference_seconds,
+            self_play_tick_seconds,
         ),
         name="self-play-actor",
         daemon=True,
@@ -480,6 +664,8 @@ def train_model(cfg: DictConfig) -> None:
         actor_thread.start()
         for prefetch_thread in prefetch_threads:
             prefetch_thread.start()
+        prev_inference_seconds = 0.0
+        prev_tick_seconds = 0.0
         try:
             for epoch in range(1, cfg.train.max_epochs + 1):
                 curriculum_window = curriculum_window_for_epoch(
@@ -565,6 +751,35 @@ def train_model(cfg: DictConfig) -> None:
                 mlflow.log_metric("train_mean_q", epoch_metrics["mean_q"], step=epoch)
                 mlflow.log_metric("replay_buffer_size", len(replay_buffer), step=epoch)
                 mlflow.log_metric("self_play_games", games_played.value, step=epoch)
+
+                # Self-play timing breakdown for this epoch alone (see self_play_worker):
+                # inference_seconds is time spent in the batched model forward pass (GPU-bound),
+                # tick_seconds is the whole ply-step including it. The remainder -- legal-move
+                # checks, board updates, win checks -- is the CPU-bound "game state transition"
+                # share; watching its fraction grow as self_play_batch_games increases shows when
+                # self-play throughput stops being GPU-limited and becomes bottlenecked there
+                # instead.
+                current_inference_seconds = self_play_inference_seconds.value
+                current_tick_seconds = self_play_tick_seconds.value
+                inference_seconds_delta = current_inference_seconds - prev_inference_seconds
+                tick_seconds_delta = current_tick_seconds - prev_tick_seconds
+                prev_inference_seconds = current_inference_seconds
+                prev_tick_seconds = current_tick_seconds
+                mlflow.log_metric(
+                    "self_play_inference_seconds", inference_seconds_delta, step=epoch
+                )
+                state_transition_seconds_delta = tick_seconds_delta - inference_seconds_delta
+                mlflow.log_metric(
+                    "self_play_state_transition_seconds",
+                    state_transition_seconds_delta,
+                    step=epoch,
+                )
+                if tick_seconds_delta > 0:
+                    mlflow.log_metric(
+                        "self_play_state_transition_fraction",
+                        state_transition_seconds_delta / tick_seconds_delta,
+                        step=epoch,
+                    )
 
                 is_best = epoch_metrics["td_loss"] < best_epoch_loss
                 if is_best:

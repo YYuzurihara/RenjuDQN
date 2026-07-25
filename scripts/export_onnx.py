@@ -48,6 +48,10 @@ def build_model_from_checkpoint(checkpoint: dict) -> tuple[RenjuResNetDQN, dict]
         raise ValueError("Checkpoint does not contain embedded config data.")
 
     model_cfg = checkpoint_config["model"]
+    # `noisy` isn't a model-config field: training decides it from `train.exploration`
+    # (see train.build_model / predict.build_model_from_checkpoint), so mirror that here
+    # rather than defaulting to False and mismatching NoisyLinear's state_dict keys.
+    exploration = checkpoint_config.get("train", {}).get("exploration", "epsilon_greedy")
     model = RenjuResNetDQN(
         in_channels=model_cfg["in_channels"],
         channels=model_cfg["channels"],
@@ -55,6 +59,7 @@ def build_model_from_checkpoint(checkpoint: dict) -> tuple[RenjuResNetDQN, dict]
         head_channels=model_cfg["head_channels"],
         num_move_labels=model_cfg["num_move_labels"],
         dueling=model_cfg["dueling"],
+        noisy=exploration == "noisy_net",
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
@@ -74,6 +79,7 @@ def build_metadata(checkpoint_config: dict) -> dict:
     data_cfg = checkpoint_config.get("data", {})
     board_size = int(data_cfg.get("board_size", 15))
     board_cells = board_size * board_size
+    exploration = checkpoint_config.get("train", {}).get("exploration", "epsilon_greedy")
 
     return {
         "model_type": "RenjuResNetDQN",
@@ -85,6 +91,8 @@ def build_metadata(checkpoint_config: dict) -> dict:
         "board_cells": board_cells,
         "in_channels": int(model_cfg["in_channels"]),
         "num_move_labels": int(model_cfg["num_move_labels"]),
+        "dueling": bool(model_cfg["dueling"]),
+        "noisy": exploration == "noisy_net",
         "supports_batch": False,
     }
 

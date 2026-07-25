@@ -9,6 +9,7 @@ alternating in one loop lets both proceed concurrently.
 
 from __future__ import annotations
 
+import math
 import queue
 import sys
 import threading
@@ -63,30 +64,45 @@ def build_scheduler(optimizer: torch.optim.Optimizer, cfg: DictConfig):
 
 
 def epsilon_for_curriculum(
-    window: int | None, board_cells: int, epsilon_start: float, epsilon_end: float
+    window: int | None,
+    board_cells: int,
+    epsilon_start: float,
+    epsilon_end: float,
+    decay_rate: float = 0.0,
 ) -> float:
     """Anneal epsilon by curriculum progress instead of a separately-tuned step count: full
     exploration while the window covers none of the game, decaying to `epsilon_end` exactly as
     the window reaches `board_cells`. Keeps self-play exploring for as long as curriculum training
-    hasn't reached the states self-play is generating, and tracks curriculum_step_size /
-    curriculum_epoch_interval automatically if they change.
+    hasn't reached the states self-play is generating, and tracks curriculum_step_size
+    automatically if it changes.
+
+    `decay_rate` controls the shape of the interpolation over `fraction_covered` (how much of
+    the curriculum window has opened): 0 is linear; positive values front-load the drop (most
+    of the decay happens over the first slice of the window, then flattens out toward
+    `epsilon_end`) via a normalized exponential, `exp(-decay_rate * fraction_covered)`, rescaled
+    so the endpoints still land exactly on `epsilon_start`/`epsilon_end`. Larger `decay_rate`
+    means a steeper early drop.
     """
     if window is None:
         return epsilon_end
     fraction_covered = min(1.0, window / board_cells)
-    return epsilon_start + fraction_covered * (epsilon_end - epsilon_start)
+    if decay_rate <= 0:
+        return epsilon_start + fraction_covered * (epsilon_end - epsilon_start)
+    decay = (math.exp(-decay_rate * fraction_covered) - math.exp(-decay_rate)) / (
+        1.0 - math.exp(-decay_rate)
+    )
+    return epsilon_end + (epsilon_start - epsilon_end) * decay
 
 
-def curriculum_window_for_epoch(epoch: int, step_size: int, epoch_interval: int) -> int | None:
-    """Steps-from-terminal window for `epoch` (1-indexed): opens `step_size` more steps every
-    `epoch_interval` epochs (epoch 1..interval -> step_size, interval+1..2*interval -> 2*step_size,
-    ...). Returns `None` (no filtering) once `step_size` is non-positive.
+def curriculum_window_for_epoch(epoch: int, step_size: int) -> int | None:
+    """Steps-from-terminal window for `epoch` (1-indexed): opens `step_size` more steps each
+    epoch (epoch 1 -> step_size, epoch 2 -> 2*step_size, ...). Returns `None` (no filtering)
+    once `step_size` is non-positive. Adjust the pace of expansion via `steps_per_epoch` rather
+    than a separate interval knob.
     """
     if step_size <= 0:
         return None
-    interval = max(1, epoch_interval)
-    stage = -(-epoch // interval)  # ceil division
-    return step_size * stage
+    return step_size * epoch
 
 
 def make_epsilon_greedy_policy(
@@ -404,12 +420,14 @@ def train_model(cfg: DictConfig) -> None:
 
     stop_event = threading.Event()
     games_played = _ThreadSafeCounter()
-    initial_window = curriculum_window_for_epoch(
-        1, cfg.train.curriculum_step_size, cfg.train.curriculum_epoch_interval
-    )
+    initial_window = curriculum_window_for_epoch(1, cfg.train.curriculum_step_size)
     epsilon_box = _SharedValue(
         epsilon_for_curriculum(
-            initial_window, BOARD_CELLS, cfg.train.epsilon_start, cfg.train.epsilon_end
+            initial_window,
+            BOARD_CELLS,
+            cfg.train.epsilon_start,
+            cfg.train.epsilon_end,
+            cfg.train.epsilon_decay_rate,
         )
     )
     window_box = _SharedValue(initial_window)
@@ -465,10 +483,14 @@ def train_model(cfg: DictConfig) -> None:
         try:
             for epoch in range(1, cfg.train.max_epochs + 1):
                 curriculum_window = curriculum_window_for_epoch(
-                    epoch, cfg.train.curriculum_step_size, cfg.train.curriculum_epoch_interval
+                    epoch, cfg.train.curriculum_step_size
                 )
                 epsilon = epsilon_for_curriculum(
-                    curriculum_window, BOARD_CELLS, cfg.train.epsilon_start, cfg.train.epsilon_end
+                    curriculum_window,
+                    BOARD_CELLS,
+                    cfg.train.epsilon_start,
+                    cfg.train.epsilon_end,
+                    cfg.train.epsilon_decay_rate,
                 )
                 epsilon_box.set(epsilon)
                 window_box.set(curriculum_window)

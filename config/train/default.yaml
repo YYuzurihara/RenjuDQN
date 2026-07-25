@@ -19,18 +19,23 @@ double_dqn: false # if true, the online network selects the next action and the 
 # curbs max-Q overestimation bias.
 replay_buffer_capacity: 1000000 #1M
 target_update_interval: 200 # gradient steps between hard target-network syncs
-steps_per_epoch: 1200 # gradient steps per epoch
+steps_per_epoch: 2000 # gradient steps per epoch
 # Self-play (actor thread) and replay_buffer.sample() (prefetch threads) run independently of
 # the learner loop, each on their own thread(s), so training isn't blocked alternating between
 # self-play, batch prep, and the GPU step.
-max_games_per_epoch: 1000 # cap on self-play games per epoch; once reached, the actor thread
+max_games_per_epoch: 30000 # cap on self-play games per epoch; once reached, the actor thread
 # idles until the next epoch. Left uncapped (null), the actor runs as fast as it can, so the
 # self-play/gradient-update ratio -- and therefore the buffer's state-action distribution --
 # drifts with however fast that thread happens to run relative to the learner (hardware-dependent,
 # not reproducible across runs). Set this to pin that ratio to steps_per_epoch instead.
+# 30000 targets replay_buffer_capacity/2 = 500k online transitions: data.csv's warmup set
+# averages ~16 plies/game (3000 games, ~49k transitions), so ~30k self-play games produce
+# ~500k transitions -- by the end of epoch 1, updated-model data reaches roughly half of the
+# buffer's total capacity (well before the buffer is full enough to start evicting warmup rows).
+# It keeps growing past that in later epochs as self-play keeps accumulating on top of it.
 prefetch_workers: 4 # threads calling replay_buffer.sample() concurrently to keep the GPU fed
 
-exploration: noisy_net # epsilon_greedy or noisy_net.
+exploration: epsilon_greedy # epsilon_greedy or noisy_net.
 # epsilon_greedy: self-play picks a uniformly random legal move with probability epsilon
 # (annealed below), otherwise the greedy argmax move.
 # noisy_net: the model's output head uses NoisyLinear (Fortunato et al., 2018) instead of
@@ -43,15 +48,16 @@ epsilon_end: 0.1
 # epsilon_for_curriculum in train.py): epsilon_start while the window below covers none of the
 # game, decaying to epsilon_end exactly as the window reaches the full board. This keeps
 # self-play exploring for as long as curriculum training hasn't reached the states self-play is
-# generating, and it automatically tracks curriculum_step_size / curriculum_epoch_interval below
-# if they change.
+# generating, and it automatically tracks curriculum_step_size below if it changes.
+epsilon_decay_rate: 0.0 # shape of the epsilon_start -> epsilon_end interpolation over curriculum
+# progress: 0 is linear; positive values front-load the drop (steep early, flattening toward
+# epsilon_end) via a normalized exponential. Higher = steeper early decay.
 
-# Curriculum learning: sample only within the last `curriculum_step_size * ceil(epoch /
-# curriculum_epoch_interval)` steps of each game, expanding the window as training progresses
-# (e.g. epoch 1 -> last 5 steps, epoch 2 -> last 10 steps, ... with the defaults below).
-# Set curriculum_step_size to 0 to disable and always sample from the full buffer.
+# Curriculum learning: sample only within the last `curriculum_step_size * epoch` steps of each
+# game, expanding the window as training progresses (e.g. epoch 1 -> last 5 steps, epoch 2 ->
+# last 10 steps, ... with the default below). Tune the pace via steps_per_epoch, not a separate
+# interval knob. Set curriculum_step_size to 0 to disable and always sample from the full buffer.
 curriculum_step_size: 5
-curriculum_epoch_interval: 1
 
 checkpoint_every_epochs: 5 # in addition to best_model.pt (see is_best in train.py), also save a
 # separate, epoch-indexed checkpoint every N epochs under checkpoint_dir/<run_name>/, so a

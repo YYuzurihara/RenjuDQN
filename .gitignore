@@ -211,7 +211,8 @@ cython_debug/
 # MLflow
 mlruns/
 mlflow.db
-artifacts/
+artifacts/*
+!artifacts/checkpoints
 
 # Hydra
 outputs/

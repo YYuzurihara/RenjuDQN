@@ -6,14 +6,41 @@
     <title>Renju DQN ONNX デモ</title>
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f4f0e8;
-        --panel: #fffaf2;
-        --ink: #1f1c18;
-        --muted: #6d6459;
-        --line: #d4c5b4;
-        --accent: #1d6b52;
-        --accent-2: #c0612f;
+        color-scheme: dark;
+        font-size: clamp(14px, 0.6vw + 12px, 22px);
+        --bg: #060708;
+        --panel: rgba(255, 255, 255, 0.055);
+        --panel-strong: rgba(255, 255, 255, 0.09);
+        --ink: #eef1f6;
+        --muted: #9aa3b3;
+        --line: rgba(255, 255, 255, 0.14);
+        --accent: #29a883;
+        --accent-2: #e0793f;
+        --glass-blur: blur(18px) saturate(150%);
+        --heat-low: #050505;
+        --heat-high: #ffffff;
+        --sheen-diagonal: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.2) 0%,
+          rgba(255, 255, 255, 0) 30%,
+          rgba(255, 255, 255, 0) 70%,
+          rgba(255, 255, 255, 0.06) 100%
+        );
+        --sheen-vertical: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.32) 0%,
+          rgba(255, 255, 255, 0.04) 45%,
+          rgba(255, 255, 255, 0) 55%,
+          rgba(0, 0, 0, 0.1) 100%
+        );
+        --sheen-diagonal-soft: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.08) 0%,
+          rgba(255, 255, 255, 0) 30%,
+          rgba(255, 255, 255, 0) 70%,
+          rgba(255, 255, 255, 0.02) 100%
+        );
+        --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.3);
       }
 
       * {
@@ -24,23 +51,30 @@
         margin: 0;
         font-family: "Segoe UI", "Hiragino Sans", sans-serif;
         background:
-          radial-gradient(circle at top left, #f8e8cc 0, transparent 32%),
-          linear-gradient(180deg, #f3ecdf 0%, var(--bg) 100%);
+          radial-gradient(circle at top left, rgba(70, 120, 255, 0.12) 0, transparent 34%),
+          radial-gradient(circle at bottom right, rgba(255, 90, 90, 0.08) 0, transparent 40%),
+          linear-gradient(180deg, #0a0c10 0%, var(--bg) 100%);
+        background-attachment: fixed;
+        background-color: var(--bg);
         color: var(--ink);
       }
 
       main {
-        width: min(920px, calc(100vw - 32px));
-        margin: 32px auto;
-        padding: 24px;
+        width: calc(100vw - 2em);
+        margin: 2em auto;
+        padding: 1.5em;
         border: 1px solid var(--line);
         border-radius: 20px;
-        background: color-mix(in srgb, var(--panel) 92%, white);
-        box-shadow: 0 16px 40px rgba(66, 45, 18, 0.08);
+        background: var(--sheen-diagonal), var(--panel);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow:
+          0 24px 60px rgba(0, 0, 0, 0.55),
+          var(--glass-edge);
       }
 
       h1 {
-        margin: 0 0 8px;
+        margin: 0 0 0.5em;
         font-size: 2rem;
       }
 
@@ -76,26 +110,27 @@
 
       .grid {
         display: grid;
-        gap: 16px;
+        gap: 1em;
       }
 
       .grid.two {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(17.5em, 1fr));
       }
 
       .field {
         display: grid;
-        gap: 8px;
+        gap: 0.5em;
       }
 
       input,
       select,
       textarea {
         width: 100%;
-        padding: 12px 14px;
+        padding: 0.75em 0.875em;
         border: 1px solid var(--line);
         border-radius: 12px;
-        background: #fff;
+        background: var(--sheen-diagonal), rgba(255, 255, 255, 0.06);
+        box-shadow: var(--glass-edge);
         color: var(--ink);
       }
 
@@ -107,29 +142,37 @@
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 0.75em;
       }
 
       .play-area {
         display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-        gap: 20px;
+        grid-template-columns: minmax(0, 1.1fr) minmax(17.5em, 0.9fr);
+        gap: 1.25em;
         align-items: start;
       }
 
       .board-shell {
         position: relative;
-        padding: 16px;
+        padding: 1em;
         border: 1px solid var(--line);
         border-radius: 18px;
-        background: linear-gradient(180deg, #f0d39f 0%, #ddb977 100%);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        background:
+          var(--sheen-diagonal),
+          linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%),
+          #050506;
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.1),
+          inset 0 0 40px rgba(0, 0, 0, 0.5),
+          0 12px 30px rgba(0, 0, 0, 0.45);
       }
 
       .board {
         display: grid;
-        grid-template-columns: repeat(15, minmax(18px, 1fr));
-        gap: 2px;
+        grid-template-columns: repeat(15, minmax(1.1em, 1fr));
+        gap: 0.15em;
         aspect-ratio: 1;
       }
 
@@ -137,17 +180,22 @@
         position: relative;
         border: 0;
         border-radius: 4px;
-        background: rgba(138, 86, 24, 0.18);
+        background:
+          var(--sheen-diagonal),
+          linear-gradient(var(--heat-color, transparent), var(--heat-color, transparent)),
+          rgba(255, 255, 255, 0.035);
+        box-shadow: var(--glass-edge);
         min-width: 0;
         min-height: 0;
         padding: 0;
+        transition: background 220ms ease;
       }
 
       .cell::before,
       .cell::after {
         content: "";
         position: absolute;
-        background: rgba(84, 52, 19, 0.45);
+        background: rgba(255, 255, 255, 0.16);
       }
 
       .cell::before {
@@ -175,47 +223,56 @@
       }
 
       .stone.black {
-        background: radial-gradient(circle at 30% 30%, #535353 0%, #171717 60%, #000 100%);
+        background: radial-gradient(circle at 30% 30%, #5a5a5a 0%, #1a1a1a 60%, #000 100%);
+        box-shadow:
+          inset 0 2px 6px rgba(255, 255, 255, 0.2),
+          0 2px 4px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba(255, 255, 255, 0.18);
       }
 
       .stone.white {
         background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f2eadb 56%, #d8ccb8 100%);
+        box-shadow:
+          inset 0 2px 6px rgba(255, 255, 255, 0.2),
+          0 2px 4px rgba(0, 0, 0, 0.5);
       }
 
       .cell.legal {
-        outline: 1px solid rgba(29, 107, 82, 0.35);
+        outline: 1px solid rgba(58, 200, 168, 0.4);
       }
 
       .cell.last-move {
-        box-shadow: inset 0 0 0 2px rgba(192, 97, 47, 0.85);
+        box-shadow: inset 0 0 0 2px rgba(224, 121, 63, 0.9);
       }
 
       .cell.opening-target {
-        outline: 2px solid rgba(192, 97, 47, 0.9);
+        outline: 2px solid rgba(224, 121, 63, 0.9);
         outline-offset: -2px;
       }
 
       .cell.opening-target::before,
       .cell.opening-target::after {
-        background: rgba(192, 97, 47, 0.7);
+        background: rgba(224, 121, 63, 0.75);
       }
 
       .opening-tip {
         position: absolute;
         left: 50%;
-        top: calc(50% - 34px);
+        top: calc(50% - 2.2em);
         transform: translate(-50%, -100%);
         z-index: 3;
-        max-width: min(280px, calc(100% - 32px));
-        padding: 10px 14px;
+        max-width: min(17.5em, calc(100% - 2em));
+        padding: 0.6em 0.85em;
         border: 1px solid rgba(192, 97, 47, 0.35);
         border-radius: 14px;
-        background: rgba(255, 250, 242, 0.96);
+        background: rgba(20, 22, 28, 0.85);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
         color: var(--ink);
         text-align: center;
         font-size: 0.95rem;
         line-height: 1.45;
-        box-shadow: 0 10px 24px rgba(66, 45, 18, 0.16);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
         pointer-events: none;
       }
 
@@ -243,10 +300,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 16px;
+        padding: 1em;
         border-radius: 18px;
-        background: rgba(31, 28, 24, 0.6);
-        backdrop-filter: blur(2px);
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
       }
 
       .turn-select-overlay[hidden] {
@@ -255,13 +313,17 @@
 
       .turn-select-panel {
         display: grid;
-        gap: 16px;
-        max-width: min(320px, 100%);
-        padding: 24px;
+        gap: 1em;
+        max-width: min(20em, 100%);
+        padding: 1.5em;
         border: 1px solid var(--line);
         border-radius: 16px;
-        background: var(--panel);
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        background: var(--sheen-diagonal), rgba(22, 24, 30, 0.8);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow:
+          0 12px 32px rgba(0, 0, 0, 0.5),
+          var(--glass-edge);
         text-align: center;
       }
 
@@ -274,71 +336,146 @@
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 12px;
+        gap: 0.75em;
       }
 
       .panel {
-        padding: 16px;
+        padding: 1em;
         border: 1px solid var(--line);
         border-radius: 18px;
-        background: rgba(255, 250, 242, 0.92);
+        background: var(--sheen-diagonal), var(--panel);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow: var(--glass-edge);
       }
 
       .stats {
         display: grid;
-        gap: 10px;
+        gap: 0.625em;
       }
 
       .stat {
-        padding: 12px 14px;
+        padding: 0.75em 0.875em;
         border-radius: 12px;
         border: 1px solid var(--line);
-        background: #fff;
+        background: var(--sheen-diagonal-soft), rgba(0, 0, 0, 0.4);
+        box-shadow: var(--glass-edge);
       }
 
       .moves {
-        max-height: 220px;
+        max-height: 13.75em;
         overflow: auto;
-        padding: 12px 14px;
+        padding: 0.75em 0.875em;
         border-radius: 12px;
         border: 1px solid var(--line);
-        background: #fff;
+        background: var(--sheen-diagonal-soft), rgba(0, 0, 0, 0.4);
+        box-shadow: var(--glass-edge);
         white-space: pre-wrap;
+      }
+
+      .qheat-legend {
+        display: grid;
+        gap: 0.375em;
+        margin-top: 0.75em;
+        padding: 0.625em 0.75em;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--sheen-diagonal-soft), rgba(0, 0, 0, 0.35);
+        box-shadow: var(--glass-edge);
+      }
+
+      .qheat-legend[hidden] {
+        display: none;
+      }
+
+      .qheat-caption {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .qheat-scale {
+        height: 0.625em;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--heat-low), var(--heat-high));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+      }
+
+      .qheat-range {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-family: Consolas, monospace;
       }
 
       button {
         border: 0;
         border-radius: 999px;
-        padding: 12px 18px;
+        padding: 0.75em 1.125em;
         cursor: pointer;
         color: white;
-        background: var(--accent);
+        background: var(--sheen-vertical), var(--accent);
+        box-shadow:
+          var(--glass-edge),
+          0 4px 14px rgba(0, 0, 0, 0.3);
       }
 
       button.secondary {
-        background: var(--accent-2);
+        background: var(--sheen-vertical), var(--accent-2);
       }
 
-      button.language-toggle {
+      .language-toggle {
+        position: relative;
         display: inline-flex;
-        gap: 6px;
-        align-items: center;
-        justify-content: center;
-        min-width: 82px;
-        padding: 9px 10px;
+        gap: 0;
+        padding: 4px;
+        border-radius: 999px;
         border: 1px solid var(--line);
-        background: #fff;
-        color: var(--ink);
-        white-space: nowrap;
+        background: var(--sheen-vertical), rgba(255, 255, 255, 0.06);
+        box-shadow: var(--glass-edge);
       }
 
-      .language-current {
-        color: var(--accent);
-        font-weight: 700;
+      .language-toggle-glass {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 4px;
+        width: calc(50% - 4px);
+        border-radius: 999px;
+        background: var(--sheen-diagonal), rgba(41, 168, 131, 0.38);
+        border: 1px solid rgba(90, 230, 190, 0.55);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        box-shadow:
+          var(--glass-edge),
+          0 0 16px rgba(41, 168, 131, 0.65),
+          0 2px 10px rgba(0, 0, 0, 0.35);
+        transition:
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
       }
 
-      .language-next {
+      .language-toggle[data-selected="en"] .language-toggle-glass {
+        transform: translateX(100%);
+      }
+
+      .language-option {
+        position: relative;
+        z-index: 1;
+        min-width: 2.6em;
+        padding: 0.5em 0.75em;
+        border: 0;
+        border-radius: 999px;
+        background: transparent;
+        box-shadow: none;
         color: var(--muted);
+        font-weight: 600;
+        white-space: nowrap;
+        transition: color 0.2s ease;
+      }
+
+      .language-option[aria-pressed="true"] {
+        color: var(--ink);
       }
 
       button:disabled {
@@ -347,24 +484,36 @@
       }
 
       .status {
-        padding: 12px 14px;
+        padding: 0.75em 0.875em;
         border-radius: 12px;
-        background: #f7efe4;
+        background: var(--sheen-diagonal-soft), rgba(0, 0, 0, 0.4);
         border: 1px solid var(--line);
+        box-shadow: var(--glass-edge);
       }
 
       pre {
         margin: 0;
-        padding: 16px;
+        padding: 1em;
         border-radius: 16px;
-        border: 1px solid #25362d;
-        background: #13201a;
+        border: 1px solid var(--line);
+        background: var(--sheen-diagonal-soft), rgba(0, 0, 0, 0.65);
+        box-shadow: var(--glass-edge);
         color: #eef7f0;
         overflow: auto;
       }
 
       code {
         font-family: Consolas, monospace;
+      }
+
+      @media (min-width: 820px) {
+        :root {
+          font-size: clamp(11px, 0.48vw + 10px, 18px);
+        }
+
+        main {
+          width: calc((100vw - 2em) * 0.8);
+        }
       }
 
       @media (max-width: 820px) {
@@ -390,16 +539,33 @@
             ブラウザ上で次の一手を推論します。
           </p>
         </div>
-        <button
+        <div
           id="language-toggle"
-          type="button"
           class="language-toggle"
-          aria-label="Englishへ切り替え"
+          role="group"
+          aria-label="表示言語"
+          data-selected="ja"
         >
-          <span id="language-current" class="language-current">JA</span>
-          <span aria-hidden="true">/</span>
-          <span id="language-next" class="language-next">EN</span>
-        </button>
+          <span class="language-toggle-glass" aria-hidden="true"></span>
+          <button
+            type="button"
+            id="language-option-ja"
+            class="language-option"
+            data-lang="ja"
+            aria-pressed="true"
+          >
+            JA
+          </button>
+          <button
+            type="button"
+            id="language-option-en"
+            class="language-option"
+            data-lang="en"
+            aria-pressed="false"
+          >
+            EN
+          </button>
+        </div>
       </header>
 
       <section class="play-area">
@@ -431,6 +597,14 @@
             初手なので中央においてね
           </div>
           <div class="board" id="board"></div>
+          <div class="qheat-legend" id="qheat-legend" hidden>
+            <span class="qheat-caption" data-i18n="qHeatmapCaption">Q値ヒートマップ（黒=低い, 白=高い）</span>
+            <div class="qheat-scale" aria-hidden="true"></div>
+            <div class="qheat-range">
+              <span id="qheat-min">-</span>
+              <span id="qheat-max">-</span>
+            </div>
+          </div>
         </div>
         <div class="panel grid">
           <div class="stats">
@@ -541,9 +715,11 @@
       const rewardStatusNode = document.querySelector("#reward-status");
       const moveLogNode = document.querySelector("#move-log");
       const resultNode = document.querySelector("#result");
-      const languageToggleButton = document.querySelector("#language-toggle");
-      const languageCurrentNode = document.querySelector("#language-current");
-      const languageNextNode = document.querySelector("#language-next");
+      const qheatLegendNode = document.querySelector("#qheat-legend");
+      const qheatMinNode = document.querySelector("#qheat-min");
+      const qheatMaxNode = document.querySelector("#qheat-max");
+      const languageToggleNode = document.querySelector("#language-toggle");
+      const languageOptionButtons = document.querySelectorAll(".language-option");
 
       const LANGUAGE_STORAGE_KEY = "renju-transformer.docs.language";
       const LANGUAGES = ["ja", "en"];
@@ -581,6 +757,7 @@
           inferenceFailed: ({message}) => `推論失敗: ${message}`,
           introHtml:
             '同じディレクトリにある <code>renju_dqn.onnx</code> と metadata JSON を読み込み、ブラウザ上で次の一手を推論します。',
+          languageGroupLabel: "表示言語",
           languageName: "日本語",
           languageShortName: "JA",
           languageToggleLabel: ({language}) => `${language}へ切り替え`,
@@ -609,6 +786,7 @@
           notAiTurn: "今は AI の手番ではありません。",
           notHumanTurn: "今はあなたの手番ではありません。",
           openingTip: "初手なので中央においてね",
+          qHeatmapCaption: "Q値ヒートマップ（黒=低い, 白=高い）",
           resultIdle: "まだ推論していません。",
           resultLabel: "推論結果",
           rewardShapingOff: "OFF",
@@ -661,6 +839,7 @@
           inferenceFailed: ({message}) => `Inference failed: ${message}`,
           introHtml:
             'Loads <code>renju_dqn.onnx</code> and the metadata JSON from this directory, then predicts the next move in your browser.',
+          languageGroupLabel: "Display language",
           languageName: "English",
           languageShortName: "EN",
           languageToggleLabel: ({language}) => `Switch to ${language}`,
@@ -689,6 +868,7 @@
           notAiTurn: "It is not the AI's turn.",
           notHumanTurn: "It is not your turn.",
           openingTip: "First move must be at the center",
+          qHeatmapCaption: "Q-value heatmap (black = low, white = high)",
           resultIdle: "No inference yet.",
           resultLabel: "Inference result",
           rewardShapingOff: "OFF",
@@ -744,7 +924,48 @@
         over: false,
         lastMoveIndex: null,
         moveLog: [],
+        qValueHeat: null,
       };
+
+      const HEAT_LOW_RGB = [5, 5, 5];
+      const HEAT_HIGH_RGB = [255, 255, 255];
+
+      function computeHeatRange(heat) {
+        if (!heat) {
+          return null;
+        }
+        let min = Infinity;
+        let max = -Infinity;
+        for (const value of heat) {
+          if (Number.isFinite(value)) {
+            if (value < min) min = value;
+            if (value > max) max = value;
+          }
+        }
+        return Number.isFinite(min) && Number.isFinite(max) ? {min, max} : null;
+      }
+
+      function heatColorForValue(value, range) {
+        if (!range || !Number.isFinite(value)) {
+          return null;
+        }
+        const span = range.max - range.min;
+        const t = span > 1e-9 ? Math.min(1, Math.max(0, (value - range.min) / span)) : 0.5;
+        const r = Math.round(HEAT_LOW_RGB[0] + (HEAT_HIGH_RGB[0] - HEAT_LOW_RGB[0]) * t);
+        const g = Math.round(HEAT_LOW_RGB[1] + (HEAT_HIGH_RGB[1] - HEAT_LOW_RGB[1]) * t);
+        const b = Math.round(HEAT_LOW_RGB[2] + (HEAT_HIGH_RGB[2] - HEAT_LOW_RGB[2]) * t);
+        return `rgba(${r}, ${g}, ${b}, 0.62)`;
+      }
+
+      function renderQHeatLegend(range) {
+        if (!range) {
+          qheatLegendNode.hidden = true;
+          return;
+        }
+        qheatLegendNode.hidden = false;
+        qheatMinNode.textContent = range.min.toFixed(3);
+        qheatMaxNode.textContent = range.max.toFixed(3);
+      }
 
       function t(key, args = {}) {
         const value = I18N[currentLanguage][key] ?? I18N.ja[key] ?? key;
@@ -774,15 +995,11 @@
       }
 
       function renderLanguageToggle() {
-        const nextLanguage = currentLanguage === "ja" ? "en" : "ja";
-        languageCurrentNode.textContent = I18N[currentLanguage].languageShortName;
-        languageNextNode.textContent = I18N[nextLanguage].languageShortName;
-        languageToggleButton.setAttribute(
-          "aria-label",
-          t("languageToggleLabel", {language: I18N[nextLanguage].languageName}),
-        );
-        languageToggleButton.title = t("languageToggleLabel", {
-          language: I18N[nextLanguage].languageName,
+        languageToggleNode.dataset.selected = currentLanguage;
+        languageToggleNode.setAttribute("aria-label", t("languageGroupLabel"));
+        languageOptionButtons.forEach((button) => {
+          const isSelected = button.dataset.lang === currentLanguage;
+          button.setAttribute("aria-pressed", String(isSelected));
         });
       }
 
@@ -890,6 +1107,7 @@
           gameState.over = false;
           gameState.lastMoveIndex = null;
           gameState.moveLog = [];
+          gameState.qValueHeat = null;
           setAiStatus("aiSyncedFromTextarea");
           refreshGameSummary("boardApplied");
           evaluateBoardAfterMove();
@@ -942,6 +1160,8 @@
         const showOpeningTip = isOpeningMove();
         const centerIndex = Math.floor(gameState.board.length / 2);
         openingTipNode.hidden = !showOpeningTip;
+        const heatRange = computeHeatRange(gameState.qValueHeat);
+        renderQHeatLegend(heatRange);
         boardNode.replaceChildren();
         for (let index = 0; index < gameState.board.length; index += 1) {
           const cellValue = gameState.board[index];
@@ -953,6 +1173,12 @@
           button.setAttribute("aria-label", t("cellLabel", {coord: indexToCoord(index)}));
           if (legalMask?.[index]) {
             button.classList.add("legal");
+          }
+          if (heatRange && gameState.qValueHeat) {
+            const heatColor = heatColorForValue(gameState.qValueHeat[index], heatRange);
+            if (heatColor) {
+              button.style.setProperty("--heat-color", heatColor);
+            }
           }
           if (showOpeningTip && index === centerIndex) {
             button.classList.add("opening-target");
@@ -1061,6 +1287,7 @@
         gameState.over = false;
         gameState.lastMoveIndex = null;
         gameState.moveLog = [];
+        gameState.qValueHeat = null;
         setAiStatus("aiIdle");
         setRewardStatus("rewardStatusIdle");
         refreshGameSummary("newGame");
@@ -1125,6 +1352,7 @@
             {topK: 5, applyLegalMask: true},
           );
           const aiIndex = prediction.predictedIndex;
+          gameState.qValueHeat = prediction.maskedQValues;
           const prevBoard = gameState.board.slice();
           gameState.board[aiIndex] = currentAiPlayer;
           gameState.lastMoveIndex = aiIndex;
@@ -1178,6 +1406,7 @@
             {topK: 5, applyLegalMask: true},
           );
           const index = prediction.predictedIndex;
+          gameState.qValueHeat = prediction.maskedQValues;
           const prevBoard = gameState.board.slice();
           gameState.board[index] = humanPlayer;
           gameState.lastMoveIndex = index;
@@ -1223,6 +1452,7 @@
         const prevBoard = gameState.board.slice();
         gameState.board[index] = humanPlayer;
         gameState.lastMoveIndex = index;
+        gameState.qValueHeat = null;
         const reward = recordMoveReward(prevBoard, humanPlayer, index);
         gameState.moveLog.push({index, player: humanPlayer, reward: formatReward(reward)});
         setAiStatus("aiAfterHumanMove");
@@ -1258,6 +1488,8 @@
             topK: 5,
             applyLegalMask: true,
           });
+          gameState.qValueHeat = prediction.maskedQValues;
+          renderBoard();
           setResult(JSON.stringify(prediction, null, 2));
           setStatus("inferenceComplete", {index: prediction.predictedIndex});
         } catch (error) {
@@ -1289,10 +1521,15 @@
         rewardShapingEnabled = !rewardShapingEnabled;
         renderRewardShapingToggle();
       });
-      languageToggleButton.addEventListener("click", () => {
-        const nextLanguage = currentLanguage === "ja" ? "en" : "ja";
-        writeLanguagePreference(nextLanguage);
-        applyLanguage(nextLanguage);
+      languageOptionButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const nextLanguage = button.dataset.lang;
+          if (nextLanguage === currentLanguage) {
+            return;
+          }
+          writeLanguagePreference(nextLanguage);
+          applyLanguage(nextLanguage);
+        });
       });
 
       boardCsvInput.addEventListener("input", () => {

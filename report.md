@@ -209,7 +209,7 @@ a =
 \text{ランダムな行動} & ( \text{確率 } \varepsilon ) \\
 \displaystyle\arg\max_{a'} Q(s,a') & (\text{確率 } 1-\varepsilon )
 \end{cases}
-$$v
+$$
 
 確率 $\varepsilon$ でランダムな行動（探索），残りの確率 $1-\varepsilon$ でその時点のQ値が最大の行動（活用）を選ぶ．
 

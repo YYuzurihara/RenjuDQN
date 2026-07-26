@@ -208,6 +208,16 @@ cython_debug/
 *.out
 *.pid
 
+# MLflow
+mlruns/
+mlflow.db
+artifacts/
+
+# Hydra
+outputs/
+multirun/
+.hydra/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

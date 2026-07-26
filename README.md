@@ -4,7 +4,7 @@ PyTorch + Hydra + MLflow + uv で構成した、五目並べの ResNet DQN（強
 
 > 元リポジトリ: https://github.com/shuichi/RenjuTransformer.git
 
-<video src="images/play.mp4" controls width="600"></video>
+<img src="images/play.gif" width="600" alt="DQNエージェントと対戦するデモ">
 
 ## セットアップ
 

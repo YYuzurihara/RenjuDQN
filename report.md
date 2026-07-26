@@ -27,7 +27,7 @@ math: katex
 
 # DQNエージェントと対戦
 
-![bg autoplay loop muted](images/play.mp4)
+<video src="images/play.mp4" width="750" controls autoplay loop muted></video>
 
 ---
 
@@ -241,4 +241,4 @@ $\mu$（中心値）と $\sigma$ （ノイズの大きさ）はどちらも学�
 
 # DQNエージェントと対戦
 
-![bg autoplay loop muted](images/play.mp4)
+<video src="images/play.mp4" width="750" controls autoplay loop muted></video>

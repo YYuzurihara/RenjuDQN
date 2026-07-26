@@ -185,7 +185,7 @@ $$
 Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|\mathcal{A}|}\sum_{a'} A(s,a') \right)
 $$
 
-ネットワークの出力層を$V$と$A$の2つに分けて，最後にこの式で合成する．
+ネットワークの出力層を $V$ と $A$ の2つに分けて，最後にこの式で合成する．
 
 盤面全体の良し悪しと，個々の手の良し悪しを別々に学習できるため，特に「どの手を打ってもあまり差がない」ような盤面での学習が効率的になる．
 
@@ -206,10 +206,10 @@ $$
 $$
 a =
 \begin{cases}
-\text{ランダムな行動} & \text{確率 } \varepsilon \text{ で} \\
-\displaystyle\arg\max_{a'} Q(s,a') & \text{確率 } 1-\varepsilon \text{ で}
+\text{ランダムな行動} & ( \text{確率 } \varepsilon ) \\
+\displaystyle\arg\max_{a'} Q(s,a') & (\text{確率 } 1-\varepsilon )
 \end{cases}
-$$
+$$v
 
 確率 $\varepsilon$ でランダムな行動（探索），残りの確率 $1-\varepsilon$ でその時点のQ値が最大の行動（活用）を選ぶ．
 

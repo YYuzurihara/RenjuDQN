@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333"/>
+    </marker>
+  </defs>
+
+  <!-- input nodes -->
+  <circle cx="90" cy="90"  r="34" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+  <text x="90" y="97" text-anchor="middle" font-size="26" fill="#000000">x&#8321;</text>
+
+  <circle cx="90" cy="210" r="34" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+  <text x="90" y="217" text-anchor="middle" font-size="26" fill="#000000">x&#8322;</text>
+
+  <text x="90" y="300" text-anchor="middle" font-size="30" fill="#000000">&#8942;</text>
+
+  <circle cx="90" cy="380" r="34" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+  <text x="90" y="387" text-anchor="middle" font-size="26" fill="#000000">x&#8345;</text>
+
+  <!-- bias node -->
+  <rect x="380" y="430" width="80" height="40" rx="8" fill="#ffe6cc" stroke="#d79b00" stroke-width="2"/>
+  <text x="420" y="457" text-anchor="middle" font-size="24" fill="#000000">b</text>
+
+  <!-- sum node -->
+  <circle cx="480" cy="235" r="60" fill="#f8cecc" stroke="#b85450" stroke-width="2"/>
+  <text x="480" y="248" text-anchor="middle" font-size="42" fill="#000000">&#931;</text>
+
+  <!-- activation function box -->
+  <rect x="660" y="180" width="220" height="110" rx="12" fill="#d5e8d4" stroke="#82b366" stroke-width="2"/>
+  <text x="770" y="238" text-anchor="middle" font-size="26" fill="#000000">活性化関数 f</text>
+
+  <!-- output node -->
+  <circle cx="1050" cy="235" r="34" fill="#dae8fc" stroke="#6c8ebf" stroke-width="2"/>
+  <text x="1050" y="242" text-anchor="middle" font-size="26" fill="#000000">y</text>
+
+  <!-- arrows: inputs -> sum -->
+  <line x1="124" y1="90"  x2="428" y2="215" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="128" text-anchor="middle" font-size="24" fill="#000000">w&#8321;</text>
+
+  <line x1="124" y1="210" x2="424" y2="228" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="205" text-anchor="middle" font-size="24" fill="#000000">w&#8322;</text>
+
+  <line x1="124" y1="380" x2="428" y2="255" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="270" y="345" text-anchor="middle" font-size="24" fill="#000000">w&#8345;</text>
+
+  <!-- bias -> sum -->
+  <line x1="420" y1="430" x2="460" y2="291" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- sum -> activation -->
+  <line x1="540" y1="235" x2="656" y2="235" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="598" y="220" text-anchor="middle" font-size="22" fill="#000000">z</text>
+
+  <!-- activation -> output -->
+  <line x1="880" y1="235" x2="1012" y2="235" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>

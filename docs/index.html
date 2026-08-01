@@ -17,8 +17,10 @@
         --accent: #29a883;
         --accent-2: #e0793f;
         --glass-blur: blur(18px) saturate(150%);
-        --heat-low: #050505;
-        --heat-high: #ffffff;
+        --board-wood-dark: #241708;
+        --board-wood-light: #3c2712;
+        --heat-low: #12283f;
+        --heat-high: #4da3ff;
         --sheen-diagonal: linear-gradient(
           135deg,
           rgba(255, 255, 255, 0.2) 0%,
@@ -160,7 +162,8 @@
         background:
           var(--sheen-diagonal),
           linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%),
-          #050506;
+          radial-gradient(circle at 25% 15%, rgba(255, 200, 130, 0.09) 0%, transparent 55%),
+          linear-gradient(160deg, var(--board-wood-light) 0%, var(--board-wood-dark) 100%);
         backdrop-filter: var(--glass-blur);
         -webkit-backdrop-filter: var(--glass-blur);
         box-shadow:
@@ -183,7 +186,7 @@
         background:
           var(--sheen-diagonal),
           linear-gradient(var(--heat-color, transparent), var(--heat-color, transparent)),
-          rgba(255, 255, 255, 0.035);
+          rgba(255, 214, 160, 0.05);
         box-shadow: var(--glass-edge);
         min-width: 0;
         min-height: 0;
@@ -195,7 +198,7 @@
       .cell::after {
         content: "";
         position: absolute;
-        background: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 232, 200, 0.2);
       }
 
       .cell::before {
@@ -598,7 +601,7 @@
           </div>
           <div class="board" id="board"></div>
           <div class="qheat-legend" id="qheat-legend" hidden>
-            <span class="qheat-caption" data-i18n="qHeatmapCaption">Q値ヒートマップ（黒=低い, 白=高い）</span>
+            <span class="qheat-caption" data-i18n="qHeatmapCaption">Q値ヒートマップ（濃紺=低い, 明るい青=高い）</span>
             <div class="qheat-scale" aria-hidden="true"></div>
             <div class="qheat-range">
               <span id="qheat-min">-</span>
@@ -786,7 +789,7 @@
           notAiTurn: "今は AI の手番ではありません。",
           notHumanTurn: "今はあなたの手番ではありません。",
           openingTip: "初手なので中央においてね",
-          qHeatmapCaption: "Q値ヒートマップ（黒=低い, 白=高い）",
+          qHeatmapCaption: "Q値ヒートマップ（濃紺=低い, 明るい青=高い）",
           resultIdle: "まだ推論していません。",
           resultLabel: "推論結果",
           rewardShapingOff: "OFF",
@@ -868,7 +871,7 @@
           notAiTurn: "It is not the AI's turn.",
           notHumanTurn: "It is not your turn.",
           openingTip: "First move must be at the center",
-          qHeatmapCaption: "Q-value heatmap (black = low, white = high)",
+          qHeatmapCaption: "Q-value heatmap (deep navy = low, bright blue = high)",
           resultIdle: "No inference yet.",
           resultLabel: "Inference result",
           rewardShapingOff: "OFF",
@@ -927,8 +930,8 @@
         qValueHeat: null,
       };
 
-      const HEAT_LOW_RGB = [5, 5, 5];
-      const HEAT_HIGH_RGB = [255, 255, 255];
+      const HEAT_LOW_RGB = [18, 40, 63];
+      const HEAT_HIGH_RGB = [77, 163, 255];
 
       function computeHeatRange(heat) {
         if (!heat) {
